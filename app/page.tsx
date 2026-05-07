@@ -17,6 +17,11 @@ const ShaderAnimation = dynamic(
   { ssr: false }
 );
 
+const SmokeBackground = dynamic(
+  () => import("@/components/ui/spooky-smoke-animation").then((m) => m.SmokeBackground),
+  { ssr: false }
+);
+
 const RELEASE_DATE  = new Date("2026-05-08T20:00:00Z");
 const SPLINE_SCENE  = "https://prod.spline.design/Dor5qQbQC8MafFxN/scene.splinecode";
 
@@ -77,7 +82,9 @@ export default function Home() {
     <main className="relative w-full h-screen overflow-hidden">
 
       {/* ── Background ─────────────────────────────────── */}
-      <div className="fixed inset-0 z-0" style={{ backgroundColor: "#0a0a0a" }} />
+      <div className="fixed inset-0 z-0" style={{ backgroundColor: "#0a0a0a" }}>
+        <SmokeBackground smokeColor="#C8B090" />
+      </div>
 
       {/* Shader — always mounted (native WebGL), visibility controlled by shaderVisible */}
       <div
