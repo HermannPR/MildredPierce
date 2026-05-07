@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ivory:     #F5EDD5;
+  --parchment: #C8B090;
+  --silk-base: #5C0A10;
+  --midnight:  #1B262C;
+  --fog:       #A3A3A3;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  /* Silk red base — area outside EtheralShadow mask */
+  background-color: #080002;
+}
+
+/* Persistent subtle scanlines after CRT intro fades */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  pointer-events: none;
+  opacity: 0.04;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px, transparent 3px,
+    rgba(0,0,0,1) 3px, rgba(0,0,0,1) 4px
+  );
+}
+
+/* Film grain — very subtle on silk */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9400;
+  pointer-events: none;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  mix-blend-mode: overlay;
+}

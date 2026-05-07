@@ -1,0 +1,32 @@
+# dependencies
+/node_modules
+
+# Next.js
+/.next/
+/out/
+
+# production build
+/build
+
+# env files
+.env
+.env*.local
+
+# Vercel
+.vercel
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeScript build cache
+tsconfig.tsbuildinfo
+
+# font source zip (font extracted to public/fonts)
+*.zip
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.pem
