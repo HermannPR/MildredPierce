@@ -17,14 +17,8 @@ const ShaderAnimation = dynamic(
   { ssr: false }
 );
 
-const NeonRGBTextEffect = dynamic(
-  () => import("@/components/ui/neon-rgbtext-effect").then((m) => m.NeonRGBTextEffect),
-  { ssr: false }
-);
-
-const RELEASE_DATE  = new Date(Date.now() + 48 * 60 * 60 * 1000);
+const RELEASE_DATE  = new Date("2026-05-08T20:00:00Z");
 const SPLINE_SCENE  = "https://prod.spline.design/Dor5qQbQC8MafFxN/scene.splinecode";
-const FRACTAL_LINES = ["FRACTAL", "AGREEMENT"]; // stable ref — no re-init of WebGL
 
 // ── Palette ──────────────────────────────────────
 const IVORY = "#F5EDD5";
@@ -38,7 +32,6 @@ const MORPH_MS   = 1300;
 export default function Home() {
   const [isFractal,     setIsFractal]     = useState(false);
   const [shaderVisible, setShaderVisible] = useState(false);
-  const [showNeon,      setShowNeon]      = useState(false);
   const [crtDone,       setCRTDone]       = useState(false);
 
   const handleCRTDone = useCallback(() => setCRTDone(true), []);
@@ -54,21 +47,19 @@ export default function Home() {
         await delay(HOLD_MS);
         if (cancelled) break;
 
-        // Gooey morph starts; NeonRGBTextEffect mounts at opacity-0
+        // Gooey morph starts
         setIsFractal(true);
         await delay(MORPH_MS);
         if (cancelled) break;
 
-        // Morph done — shader + neon both appear with FRACTAL AGREEMENT
+        // Morph done — shader appears with FRACTAL AGREEMENT
         setShaderVisible(true);
-        setShowNeon(true);
 
         // ── Hold FRACTAL AGREEMENT ─────────────────────────
         await delay(HOLD_MS);
         if (cancelled) break;
 
-        // Neon + shader fade out together, then morph back
-        setShowNeon(false);
+        // Shader fades out, then morph back
         setShaderVisible(false);
         await delay(400);
         if (cancelled) break;
@@ -143,20 +134,6 @@ export default function Home() {
               textClassName="font-display leading-none tracking-wide"
             />
 
-            {/* Neon RGB chromatic overlay — always mounted, opacity controlled */}
-            <div
-              className="absolute inset-0 z-10 pointer-events-none"
-              style={{
-                opacity: showNeon ? 1 : 0,
-                transition: "opacity 0.4s ease",
-              }}
-            >
-              <NeonRGBTextEffect
-                lines={FRACTAL_LINES}
-                fontFamily="var(--font-display), serif"
-                fontSize={250}
-              />
-            </div>
           </div>
 
           {/* Bottom rule */}
