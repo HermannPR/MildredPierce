@@ -83,7 +83,7 @@ export default function Home() {
 
       {/* ── Background ─────────────────────────────────── */}
       <div className="fixed inset-0 z-0" style={{ backgroundColor: "#0a0a0a" }}>
-        <SmokeBackground smokeColor="#C8B090" />
+        <SmokeBackground smokeColor="#CC1111" />
       </div>
 
       {/* Shader — always mounted (native WebGL), visibility controlled by shaderVisible */}
