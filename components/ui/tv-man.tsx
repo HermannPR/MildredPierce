@@ -23,6 +23,9 @@ const BOOT_MS       = 2400;
 const ZONE_WAIT_MS  = 3000;  // hold in zone before clearing starts
 const LOCK_CLEAR_MS = 4000;  // static clearing duration
 
+// Eye frame hold times (ms) per spec
+const FRAME_HOLDS = [500, 200, 200, 200, 200, 300, 400, 200, 200, 300, 400, 500];
+
 // Screen area within tvheadonly.png (% of square container)
 const SCR_LEFT   = "22%";
 const SCR_TOP    = "18%";
@@ -91,9 +94,11 @@ function SmokePuff({ left, top, delay }: { left: string; top: string; delay: str
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function TVMan() {
-  const [phase,     setPhase]     = useState<Phase>("idle");
-  const [knobAngle, setKnobAngle] = useState(135);
-  const [target,    setTarget]    = useState(randTarget);
+  const [phase,       setPhase]       = useState<Phase>("idle");
+  const [knobAngle,   setKnobAngle]   = useState(135);
+  const [target,      setTarget]      = useState(randTarget);
+  const [syncedFrame, setSyncedFrame] = useState(0);
+  const [jitter,      setJitter]      = useState({ x: 0, y: 0, r: 0 });
 
   const dist      = Math.abs(knobAngle - target);
   const proximity = Math.max(0, 1 - dist / SYNC_ZONE);
@@ -119,9 +124,10 @@ export function TVMan() {
   const lockRafRef    = useRef(0);
 
   // ── Timers ─────────────────────────────────────────────────────────────────
-  const timerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const zoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const clearIvRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const clearIvRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearT = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -343,6 +349,37 @@ export function TVMan() {
     return () => cancelAnimationFrame(lockRafRef.current);
   }, [phase]);
 
+  // ── Preload eye frames on zoom ────────────────────────────────────────────
+  useEffect(() => {
+    if (phase !== "zooming") return;
+    for (let i = 1; i <= 12; i++) {
+      const img = new window.Image();
+      img.src = `/tv/eye/frame${String(i).padStart(2, "0")}.png`;
+    }
+  }, [phase]);
+
+  // ── Eye frame cycle during synced ─────────────────────────────────────────
+  useEffect(() => {
+    if (phase !== "synced") {
+      if (syncTimerRef.current) { clearTimeout(syncTimerRef.current); syncTimerRef.current = null; }
+      setSyncedFrame(0);
+      return;
+    }
+    let idx = 0;
+    const step = () => {
+      idx = (idx + 1) % FRAME_HOLDS.length;
+      setSyncedFrame(idx);
+      setJitter({
+        x: (Math.random() - 0.5) * 4,
+        y: (Math.random() - 0.5) * 4,
+        r: (Math.random() - 0.5) * 0.7,
+      });
+      syncTimerRef.current = setTimeout(step, FRAME_HOLDS[idx]);
+    };
+    syncTimerRef.current = setTimeout(step, FRAME_HOLDS[0]);
+    return () => { if (syncTimerRef.current) { clearTimeout(syncTimerRef.current); syncTimerRef.current = null; } };
+  }, [phase]);
+
   // ── Swipe-anywhere drag ───────────────────────────────────────────────────
   const onSwipeDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest("button")) return;
@@ -431,15 +468,34 @@ export function TVMan() {
               className="relative pointer-events-none"
               style={{ width: "min(100vw, calc(100vh - 56px))", aspectRatio: "1" }}
             >
-              {/* TV head */}
+              {/* TV head — fades out during synced */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/tv/tvheadonly.png"
                 alt="TV"
                 draggable={false}
                 className="w-full h-full object-contain select-none pointer-events-none"
-                style={{ animation: phase === "jitter" ? "tvJitter 0.09s infinite" : undefined }}
+                style={{
+                  animation:  phase === "jitter" ? "tvJitter 0.09s infinite" : undefined,
+                  opacity:    phase === "synced" ? 0 : 1,
+                  transition: "opacity 0.4s ease",
+                }}
               />
+
+              {/* Eye frame animation — replaces TV head during synced */}
+              {phase === "synced" && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/tv/eye/frame${String(syncedFrame + 1).padStart(2, "0")}.png`}
+                  alt=""
+                  draggable={false}
+                  className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none"
+                  style={{
+                    transform:  `translate(${jitter.x}px, ${jitter.y}px) rotate(${jitter.r}deg)`,
+                    transition: "transform 0.06s ease-out",
+                  }}
+                />
+              )}
 
               {/* Static — detuned / jitter / booting */}
               <canvas
@@ -539,7 +595,6 @@ export function TVMan() {
                 ×
               </button>
 
-              {/* Eye frames — wire here when assets ready */}
             </div>
           </div>
 
