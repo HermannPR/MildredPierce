@@ -91,7 +91,7 @@ export function TVMan() {
   // Audio
   const ctxRef       = useRef<AudioContext | null>(null);
   const noiseGainRef = useRef<GainNode | null>(null);
-  const musicRef     = useRef<HTMLAudioElement | null>(null);
+  const musicRef     = useRef<AudioBufferSourceNode | null>(null);
 
   // Swipe-anywhere drag state
   const swipeRef = useRef({ active: false, lastX: 0 });
@@ -131,7 +131,7 @@ export function TVMan() {
     cancelAnimationFrame(rafRef.current);
     const g = noiseGainRef.current, c = ctxRef.current;
     if (g && c) g.gain.setTargetAtTime(0, c.currentTime, 0.1);
-    if (musicRef.current) { musicRef.current.pause(); musicRef.current = null; }
+    if (musicRef.current) { try { musicRef.current.stop(); } catch (_) {} musicRef.current = null; }
     setPhase("idle");
   }, [clearT]);
 
@@ -164,17 +164,28 @@ export function TVMan() {
       setPhase("synced");
 
       const canOpus = document.createElement("audio").canPlayType("audio/webm; codecs=opus") !== "";
-      const audio = new Audio(canOpus ? "/tv/song.webm" : "/tv/song.mp3");
-      audio.volume = 0.75;
-      audio.addEventListener("loadedmetadata", () => {
-        const slack = Math.max(0, audio.duration - 6);
-        audio.currentTime = Math.random() * slack;
-      });
-      audio.play().catch(() => {});
-      musicRef.current = audio;
+      const audioCtx = ctxRef.current;
+      if (audioCtx) {
+        fetch("/api/audio", { headers: { Accept: canOpus ? "audio/webm" : "audio/mpeg" } })
+          .then(r => r.arrayBuffer())
+          .then(buf => audioCtx.decodeAudioData(buf))
+          .then(decoded => {
+            if (!ctxRef.current) return;
+            const src  = ctxRef.current.createBufferSource();
+            src.buffer = decoded;
+            const vol  = ctxRef.current.createGain();
+            vol.gain.value = 0.75;
+            src.connect(vol);
+            vol.connect(ctxRef.current.destination);
+            const slack = Math.max(0, decoded.duration - 6);
+            src.start(0, Math.random() * slack, 5);
+            musicRef.current = src;
+          })
+          .catch(() => {});
+      }
 
       timerRef.current = setTimeout(() => {
-        if (musicRef.current) { musicRef.current.pause(); musicRef.current = null; }
+        if (musicRef.current) { try { musicRef.current.stop(); } catch (_) {} musicRef.current = null; }
         setPhase("jitter");
 
         timerRef.current = setTimeout(() => {
