@@ -26,11 +26,11 @@ const LOCK_CLEAR_MS = 4000;  // static clearing duration
 // Eye frame hold times (ms) per spec
 const FRAME_HOLDS = [500, 200, 200, 200, 200, 300, 400, 200, 200, 300, 400, 500];
 
-// Screen area within tvheadonly.png (% of square container)
-const SCR_LEFT   = "22%";
-const SCR_TOP    = "18%";
-const SCR_WIDTH  = "56%";
-const SCR_HEIGHT = "36%";
+// Screen area within tvheadonly.png — inset from bezel edges
+const SCR_LEFT   = "25%";
+const SCR_TOP    = "21%";
+const SCR_WIDTH  = "50%";
+const SCR_HEIGHT = "30%";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const clampKnob = (a: number) => Math.max(0, Math.min(KNOB_MAX, a));
@@ -457,6 +457,18 @@ export function TVMan() {
           onPointerUp={onSwipeUp}
           onPointerCancel={onSwipeUp}
         >
+          {/* Grain texture */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              opacity:         0.04,
+              backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E\")",
+              backgroundSize:  "256px 256px",
+              mixBlendMode:    "overlay",
+              zIndex:          60,
+            }}
+          />
+
           {/* TV centered — fills 82% of shortest viewport dimension */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div
@@ -488,6 +500,7 @@ export function TVMan() {
                   style={{
                     transform:  `translate(${jitter.x}px, ${jitter.y}px) rotate(${jitter.r}deg)`,
                     transition: "transform 0.06s ease-out",
+                    clipPath:   "inset(8% 0 0 0)",
                   }}
                 />
               )}
@@ -541,8 +554,7 @@ export function TVMan() {
                 style={{
                   left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT,
                   borderRadius: "4px",
-                  background:   "radial-gradient(ellipse at 50% 42%, transparent 48%, rgba(0,0,0,0.7) 100%)",
-                  boxShadow:    "inset 0 0 18px rgba(0,0,0,0.6), 0 0 22px rgba(160,200,160,0.07), 0 0 55px rgba(120,170,120,0.04)",
+                  boxShadow:    "inset 0 0 22px rgba(0,0,0,0.75), 0 0 22px rgba(160,200,160,0.07), 0 0 55px rgba(120,170,120,0.04)",
                   zIndex:       3,
                 }}
               />
@@ -583,10 +595,10 @@ export function TVMan() {
                 </>
               )}
 
-              {/* Knob — reduced 40% */}
+              {/* Knob */}
               <div
                 className="absolute pointer-events-none"
-                style={{ left: "43%", top: "60%", width: "11%", aspectRatio: "1" }}
+                style={{ left: "24%", top: "62%", width: "11%", aspectRatio: "1" }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/tv/knobbackpart.png" alt="" draggable={false}
