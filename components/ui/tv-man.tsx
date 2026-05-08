@@ -300,11 +300,11 @@ export function TVMan() {
       const { width: W, height: H } = canvas;
       const id = ctx2.createImageData(W, H);
       const d  = id.data;
-      // In zone: reduce alpha (60% at center), outside: 100%
+      // Subtle — eye always visible through static
       const a =
-        phase === "booting" ? 215 :
-        phase === "jitter"  ? 200 :
-        Math.round(230 * (1 - 0.4 * proximity));
+        phase === "booting" ? 100 :
+        phase === "jitter"  ? 110 :
+        Math.round(85 * (1 - 0.5 * proximity));
       for (let i = 0; i < d.length; i += 4) {
         const v = (Math.random() * 255) | 0;
         d[i] = d[i+1] = d[i+2] = v; d[i+3] = a;
@@ -334,10 +334,10 @@ export function TVMan() {
       const elapsed = performance.now() - lockStart;
       let alpha: number;
       if (elapsed < ZONE_WAIT_MS) {
-        alpha = 210;
+        alpha = 110;
       } else {
         const p = Math.min((elapsed - ZONE_WAIT_MS) / LOCK_CLEAR_MS, 1);
-        alpha = Math.round(210 - 185 * p); // 210 → 25
+        alpha = Math.round(110 - 98 * p); // 110 → 12
       }
       for (let i = 0; i < d.length; i += 4) {
         const v = (Math.random() * 255) | 0;
@@ -380,6 +380,14 @@ export function TVMan() {
     return () => { if (syncTimerRef.current) { clearTimeout(syncTimerRef.current); syncTimerRef.current = null; } };
   }, [phase]);
 
+  // ── ESC to close ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (phase === "idle") return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [phase, close]);
+
   // ── Swipe-anywhere drag ───────────────────────────────────────────────────
   const onSwipeDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest("button")) return;
@@ -403,20 +411,9 @@ export function TVMan() {
   const showSmoke   = phase === "locking" || phase === "shutoff";
   const visualKnob  = knobAngle - 135;
 
-  const lightColor =
-    phase === "synced"  ? "#00ff55" :
-    phase === "locking" ? "#ffaa00" :
-    proximity > 0.5     ? "#ff8800" :
-    "#ff2222";
-
-  const lightPulse: React.CSSProperties =
-    phase === "locking" ? { animation: "lightPulse 0.55s ease-in-out infinite" } : {};
-
-  const posPercent = (knobAngle / KNOB_MAX) * 100;
-
   return (
     <>
-      {/* ── Easter egg trigger: TV man body ──────────────────────────────── */}
+      {/* ── Easter egg trigger ────────────────────────────────────────────── */}
       <div
         className="fixed bottom-0 left-1/2 z-30 select-none"
         style={{
@@ -460,15 +457,13 @@ export function TVMan() {
           onPointerUp={onSwipeUp}
           onPointerCancel={onSwipeUp}
         >
-          <div
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            style={{ paddingBottom: "56px" }}
-          >
+          {/* TV centered — fills 82% of shortest viewport dimension */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div
               className="relative pointer-events-none"
-              style={{ width: "min(100vw, calc(100vh - 56px))", aspectRatio: "1" }}
+              style={{ width: "min(82vw, 82vh)", aspectRatio: "1" }}
             >
-              {/* TV head — fades out during synced */}
+              {/* TV head — fades during synced */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/tv/tvheadonly.png"
@@ -482,7 +477,7 @@ export function TVMan() {
                 }}
               />
 
-              {/* Eye frame animation — replaces TV head during synced */}
+              {/* Eye frame animation — synced */}
               {phase === "synced" && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -497,6 +492,8 @@ export function TVMan() {
                 />
               )}
 
+              {/* ── CRT screen area ──────────────────────────────────────── */}
+
               {/* Static — detuned / jitter / booting */}
               <canvas
                 ref={eyeCanvasRef}
@@ -506,6 +503,7 @@ export function TVMan() {
                 style={{
                   left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT,
                   imageRendering: "pixelated",
+                  borderRadius:   "3px",
                   opacity:    phase === "synced" || phase === "locking" ? 0 : 1,
                   transition: "opacity 0.55s ease",
                 }}
@@ -520,8 +518,59 @@ export function TVMan() {
                 style={{
                   left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT,
                   imageRendering: "pixelated",
+                  borderRadius:   "3px",
                   opacity:    phase === "locking" ? 1 : 0,
                   transition: "opacity 0.35s ease",
+                }}
+              />
+
+              {/* CRT scanlines */}
+              <div
+                className="absolute pointer-events-none"
+                style={{
+                  left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT,
+                  borderRadius: "3px",
+                  background:   "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px)",
+                  zIndex:       2,
+                }}
+              />
+
+              {/* CRT vignette + edge darkening */}
+              <div
+                className="absolute pointer-events-none"
+                style={{
+                  left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT,
+                  borderRadius: "4px",
+                  background:   "radial-gradient(ellipse at 50% 42%, transparent 48%, rgba(0,0,0,0.7) 100%)",
+                  boxShadow:    "inset 0 0 18px rgba(0,0,0,0.6), 0 0 22px rgba(160,200,160,0.07), 0 0 55px rgba(120,170,120,0.04)",
+                  zIndex:       3,
+                }}
+              />
+
+              {/* Boot scan line */}
+              {phase === "booting" && (
+                <div
+                  className="absolute pointer-events-none overflow-hidden"
+                  style={{ left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT, borderRadius: "3px", zIndex: 4 }}
+                >
+                  <div style={{
+                    position: "absolute", left: 0, right: 0, height: "3px",
+                    backgroundColor: "rgba(255,255,255,0.45)",
+                    animation: "scanSweep 0.9s ease-in forwards",
+                  }} />
+                </div>
+              )}
+
+              {/* Dark screen — shutoff / boot */}
+              <div
+                className="absolute pointer-events-none"
+                style={{
+                  left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT,
+                  borderRadius:    "3px",
+                  backgroundColor: "#000",
+                  zIndex:          5,
+                  opacity:    darkScreen ? (phase === "booting" ? 0.6 : 1) : 0,
+                  transition: phase === "shutoff" ? "opacity 0.35s ease-in" : "opacity 0.7s ease-out",
                 }}
               />
 
@@ -534,35 +583,10 @@ export function TVMan() {
                 </>
               )}
 
-              {/* Boot scan line */}
-              {phase === "booting" && (
-                <div
-                  className="absolute pointer-events-none overflow-hidden"
-                  style={{ left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT }}
-                >
-                  <div style={{
-                    position: "absolute", left: 0, right: 0, height: "3px",
-                    backgroundColor: "rgba(255,255,255,0.55)",
-                    animation: "scanSweep 0.9s ease-in forwards",
-                  }} />
-                </div>
-              )}
-
-              {/* Dark screen — shutoff / boot */}
+              {/* Knob — reduced 40% */}
               <div
                 className="absolute pointer-events-none"
-                style={{
-                  left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT,
-                  backgroundColor: "#000",
-                  opacity:    darkScreen ? (phase === "booting" ? 0.55 : 1) : 0,
-                  transition: phase === "shutoff" ? "opacity 0.35s ease-in" : "opacity 0.7s ease-out",
-                }}
-              />
-
-              {/* Knob */}
-              <div
-                className="absolute pointer-events-none"
-                style={{ left: "41%", top: "58%", width: "18%", aspectRatio: "1" }}
+                style={{ left: "43%", top: "60%", width: "11%", aspectRatio: "1" }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/tv/knobbackpart.png" alt="" draggable={false}
@@ -573,71 +597,33 @@ export function TVMan() {
                   style={{ transform: `rotate(${visualKnob}deg)`, transformOrigin: "50% 50%" }} />
               </div>
 
-              {/* Light indicator */}
+              {/* Light — dim dark crimson, barely visible */}
               <div
                 className="absolute pointer-events-none rounded-full"
                 style={{
-                  left: "34%", top: "62%", width: "2.8%", aspectRatio: "1",
-                  backgroundColor: lightColor,
-                  boxShadow:  `0 0 8px 3px ${lightColor}99`,
-                  transition: "background-color 0.25s ease, box-shadow 0.25s ease",
-                  ...lightPulse,
+                  left:            "35%", top: "63%",
+                  width:           "1.4%", aspectRatio: "1",
+                  backgroundColor: phase === "synced" ? "#0a2a0a" : "#1a0404",
+                  boxShadow:       phase === "synced" ? "0 0 4px 1px #0a2a0a88" : "0 0 3px 1px #1a040488",
+                  transition:      "background-color 1s ease, box-shadow 1s ease",
+                  animation:       phase === "locking" ? "lightPulse 0.55s ease-in-out infinite" : undefined,
                 }}
               />
 
-              {/* X button */}
+              {/* X — nearly invisible, ESC also works */}
               <button
                 onClick={close}
-                className="absolute pointer-events-auto top-[5%] right-[5%]
-                           flex items-center justify-center w-9 h-9
-                           text-white/40 hover:text-white/80 text-3xl font-thin transition-colors"
+                className="absolute pointer-events-auto top-[4%] right-[4%]
+                           flex items-center justify-center w-7 h-7
+                           text-3xl font-thin transition-opacity"
+                style={{ color: "rgba(255,255,255,0.08)" }}
+                onMouseEnter={e => (e.currentTarget.style.color = "rgba(255,255,255,0.35)")}
+                onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.08)")}
               >
                 ×
               </button>
-
             </div>
           </div>
-
-          {/* Tune indicator */}
-          {phase === "detuned" && (
-            <div
-              className="absolute bottom-0 left-0 right-0 pointer-events-none
-                         flex flex-col items-center justify-center gap-2"
-              style={{ height: "56px" }}
-            >
-              <p className="text-white/30 text-[10px] tracking-[0.35em] font-display uppercase select-none">
-                ◀ &nbsp; TUNE &nbsp; ▶
-              </p>
-              <div className="relative w-52 h-[3px] bg-white/10 rounded-full">
-                <div
-                  className="absolute top-1/2 w-3 h-3 rounded-full"
-                  style={{
-                    left:            `${posPercent}%`,
-                    transform:       "translate(-50%, -50%)",
-                    backgroundColor: lightColor,
-                    boxShadow:       `0 0 5px ${lightColor}`,
-                    transition:      "background-color 0.25s ease",
-                  }}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Locking / synced hint */}
-          {(phase === "locking" || phase === "synced") && (
-            <div
-              className="absolute bottom-0 left-0 right-0 pointer-events-none
-                         flex items-center justify-center"
-              style={{ height: "56px" }}
-            >
-              <p
-                className="text-white/30 text-[10px] tracking-[0.4em] font-display uppercase select-none"
-                style={{ animation: phase === "locking" ? "lightPulse 0.55s ease-in-out infinite" : undefined }}
-              >
-                {phase === "locking" ? "SYNTONIZING…" : "SIGNAL LOCKED"}
-              </p>
-            </div>
-          )}
         </div>
       )}
     </>
