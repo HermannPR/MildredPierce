@@ -21,6 +21,9 @@ const JITTER_MS  = 1400;
 const SHUTOFF_MS = 900;
 const BOOT_MS    = 2400;
 
+// Frame hold times (ms) per spec
+const FRAME_HOLDS = [500, 200, 200, 200, 200, 300, 400, 200, 200, 300, 400, 500];
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const clampKnob = (a: number) => Math.max(0, Math.min(KNOB_MAX, a));
 
@@ -79,9 +82,10 @@ function SmokePuff({ left, top, delay }: { left: string; top: string; delay: str
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function TVMan() {
-  const [phase,     setPhase]     = useState<Phase>("idle");
-  const [knobAngle, setKnobAngle] = useState(135); // start at midpoint
-  const [target,    setTarget]    = useState(randTarget);
+  const [phase,       setPhase]       = useState<Phase>("idle");
+  const [knobAngle,   setKnobAngle]   = useState(135); // start at midpoint
+  const [target,      setTarget]      = useState(randTarget);
+  const [syncedFrame, setSyncedFrame] = useState(0);
 
   // Derived (linear range, no wrap)
   const dist      = Math.abs(knobAngle - target);
@@ -102,8 +106,9 @@ export function TVMan() {
   const rafRef        = useRef(0);
 
   // Timer chain
-  const timerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lockMsRef = useRef(6000); // randomized per lock
+  const timerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lockMsRef   = useRef(6000); // randomized per lock
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearT = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -117,6 +122,15 @@ export function TVMan() {
     const { gain } = buildNoise(ctx);
     noiseGainRef.current = gain;
   }, []);
+
+  // ── Preload eye frames on zoom ────────────────────────────────────────────
+  useEffect(() => {
+    if (phase !== "zooming") return;
+    for (let i = 1; i <= 12; i++) {
+      const img = new window.Image();
+      img.src = `/tv/eye/frame${String(i).padStart(2, "0")}.png`;
+    }
+  }, [phase]);
 
   // ── Open ─────────────────────────────────────────────────────────────────
   const open = useCallback(() => {
@@ -263,6 +277,23 @@ export function TVMan() {
     return () => cancelAnimationFrame(lockRafRef.current);
   }, [phase]);
 
+  // ── Eye frame cycle during synced ─────────────────────────────────────────
+  useEffect(() => {
+    if (phase !== "synced") {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      setSyncedFrame(0);
+      return;
+    }
+    let idx = 0;
+    const step = () => {
+      idx = (idx + 1) % FRAME_HOLDS.length;
+      setSyncedFrame(idx);
+      syncTimerRef.current = setTimeout(step, FRAME_HOLDS[idx]);
+    };
+    syncTimerRef.current = setTimeout(step, FRAME_HOLDS[0]);
+    return () => { if (syncTimerRef.current) clearTimeout(syncTimerRef.current); };
+  }, [phase]);
+
   // ── Swipe-anywhere drag (horizontal → knob rotation) ─────────────────────
   const onSwipeDown = useCallback((e: React.PointerEvent) => {
     // Skip if touch lands on a button
@@ -398,6 +429,18 @@ export function TVMan() {
                   transition:     "opacity 0.4s ease",
                 }}
               />
+
+              {/* Eye frame animation — synced */}
+              {phase === "synced" && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/tv/eye/frame${String(syncedFrame + 1).padStart(2, "0")}.png`}
+                  alt=""
+                  draggable={false}
+                  className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none"
+                  style={{ mixBlendMode: "multiply" }}
+                />
+              )}
 
               {/* Smoke puffs: locking + shutoff */}
               {showSmoke && (
