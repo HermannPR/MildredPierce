@@ -6,26 +6,33 @@ import { useState, useEffect, useRef, useCallback } from "react";
 type Phase =
   | "idle"
   | "zooming"
-  | "detuned"   // searching — knob interactive
-  | "locking"   // found zone — 5-8s static transition, knob locked
-  | "synced"    // music plays — 5s
+  | "detuned"
+  | "locking"   // 3s full static → 4s gradual clear
+  | "synced"    // clean audio, 20s
   | "jitter"
   | "shutoff"
   | "booting";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const SYNC_ZONE  = 28;   // ±° from target = in zone
-const KNOB_MAX   = 270;  // 270° sweep
-const MUSIC_MS   = 5000;
-const JITTER_MS  = 1400;
-const SHUTOFF_MS = 900;
-const BOOT_MS    = 2400;
+const SYNC_ZONE     = 28;    // ±° from target = in zone
+const KNOB_MAX      = 270;
+const MUSIC_MS      = 20000; // 20s clean music
+const JITTER_MS     = 1400;
+const SHUTOFF_MS    = 900;
+const BOOT_MS       = 2400;
+const ZONE_WAIT_MS  = 3000;  // hold in zone before clearing starts
+const LOCK_CLEAR_MS = 4000;  // static clearing duration
+
+// Screen area within tvheadonly.png (% of square container)
+const SCR_LEFT   = "22%";
+const SCR_TOP    = "18%";
+const SCR_WIDTH  = "56%";
+const SCR_HEIGHT = "36%";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const clampKnob = (a: number) => Math.max(0, Math.min(KNOB_MAX, a));
 
 function randTarget() {
-  // Keep target fully inside range so sync zone is never cut off
   return SYNC_ZONE + Math.floor(Math.random() * (KNOB_MAX + 1 - 2 * SYNC_ZONE));
 }
 function shiftTarget(prev: number) {
@@ -34,44 +41,49 @@ function shiftTarget(prev: number) {
   return next;
 }
 
-// ── WebAudio noise ─────────────────────────────────────────────────────────────
+// ── WebAudio ──────────────────────────────────────────────────────────────────
 function buildNoise(ctx: AudioContext) {
   const len = ctx.sampleRate * 2;
   const buf = ctx.createBuffer(1, len, ctx.sampleRate);
   const d   = buf.getChannelData(0);
   for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
 
-  const src       = ctx.createBufferSource();
-  src.buffer      = buf;
-  src.loop        = true;
+  const src  = ctx.createBufferSource();
+  src.buffer = buf;
+  src.loop   = true;
 
-  const filt      = ctx.createBiquadFilter();
-  filt.type       = "bandpass";
+  const filt = ctx.createBiquadFilter();
+  filt.type  = "bandpass";
   filt.frequency.value = 2100;
-  filt.Q.value    = 0.45;
+  filt.Q.value = 0.45;
 
-  const gain      = ctx.createGain();
+  const gain = ctx.createGain();
   gain.gain.value = 0;
 
-  src.connect(filt);
-  filt.connect(gain);
-  gain.connect(ctx.destination);
+  src.connect(filt); filt.connect(gain); gain.connect(ctx.destination);
   src.start();
-
-  return { gain, stop: () => { try { src.stop(); } catch (_) {} } };
+  return { gain };
 }
 
-// ── Smoke puff element ────────────────────────────────────────────────────────
+function makeDistortCurve(amount: number): Float32Array<ArrayBuffer> {
+  const n = 512, curve = new Float32Array(new ArrayBuffer(n * 4));
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1;
+    curve[i] = ((Math.PI + amount) * x) / (Math.PI + amount * Math.abs(x));
+  }
+  return curve;
+}
+
+// ── Smoke puff ────────────────────────────────────────────────────────────────
 function SmokePuff({ left, top, delay }: { left: string; top: string; delay: string }) {
   return (
     <div
       className="absolute pointer-events-none rounded-full"
       style={{
         left, top,
-        width:           "5%",
-        aspectRatio:     "1",
+        width: "5%", aspectRatio: "1",
         backgroundColor: "rgba(160,160,160,0.65)",
-        animation:       `smokeLoop 1.1s ease-out ${delay} infinite`,
+        animation: `smokeLoop 1.1s ease-out ${delay} infinite`,
       }}
     />
   );
@@ -80,36 +92,74 @@ function SmokePuff({ left, top, delay }: { left: string; top: string; delay: str
 // ── Component ─────────────────────────────────────────────────────────────────
 export function TVMan() {
   const [phase,     setPhase]     = useState<Phase>("idle");
-  const [knobAngle, setKnobAngle] = useState(135); // start at midpoint
+  const [knobAngle, setKnobAngle] = useState(135);
   const [target,    setTarget]    = useState(randTarget);
 
-  // Derived (linear range, no wrap)
   const dist      = Math.abs(knobAngle - target);
   const proximity = Math.max(0, 1 - dist / SYNC_ZONE);
   const inZone    = dist <= SYNC_ZONE;
 
-  // Audio
+  // ── Audio refs ─────────────────────────────────────────────────────────────
   const ctxRef       = useRef<AudioContext | null>(null);
   const noiseGainRef = useRef<GainNode | null>(null);
-  const musicRef     = useRef<AudioBufferSourceNode | null>(null);
+  // Song chain: src → waveshaper → bandpass → gain → destination
+  const songBufRef   = useRef<AudioBuffer | null>(null);
+  const songSrcRef   = useRef<AudioBufferSourceNode | null>(null);
+  const distortRef   = useRef<WaveShaperNode | null>(null);
+  const songFiltRef  = useRef<BiquadFilterNode | null>(null);
+  const songGainRef  = useRef<GainNode | null>(null);
 
-  // Swipe-anywhere drag state
+  // ── Swipe ──────────────────────────────────────────────────────────────────
   const swipeRef = useRef({ active: false, lastX: 0 });
 
-  // Canvas
+  // ── Canvas ─────────────────────────────────────────────────────────────────
   const eyeCanvasRef  = useRef<HTMLCanvasElement>(null);
   const lockCanvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef        = useRef(0);
+  const lockRafRef    = useRef(0);
 
-  // Timer chain
-  const timerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lockMsRef = useRef(6000); // randomized per lock
+  // ── Timers ─────────────────────────────────────────────────────────────────
+  const timerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const zoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearIvRef  = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const clearT = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
   }, []);
 
-  // ── Audio init (requires user gesture) ───────────────────────────────────
+  // ── Start distorted song ──────────────────────────────────────────────────
+  const startSong = useCallback((decoded: AudioBuffer) => {
+    const ctx = ctxRef.current;
+    if (!ctx) return;
+    if (songSrcRef.current) { try { songSrcRef.current.stop(); } catch (_) {} songSrcRef.current = null; }
+
+    const src = ctx.createBufferSource();
+    src.buffer = decoded;
+    src.loop   = true;
+
+    const distort = ctx.createWaveShaper();
+    distort.curve       = makeDistortCurve(400);
+    distort.oversample  = "4x";
+
+    const filt = ctx.createBiquadFilter();
+    filt.type  = "bandpass";
+    filt.frequency.value = 1800;
+    filt.Q.value = 4.0;
+
+    const gain = ctx.createGain();
+    gain.gain.value = 0.05;
+
+    src.connect(distort); distort.connect(filt); filt.connect(gain); gain.connect(ctx.destination);
+    const slack = Math.max(0, decoded.duration - 25);
+    src.start(0, Math.random() * slack);
+
+    songSrcRef.current  = src;
+    distortRef.current  = distort;
+    songFiltRef.current = filt;
+    songGainRef.current = gain;
+  }, []);
+
+  // ── Audio init ────────────────────────────────────────────────────────────
   const initAudio = useCallback(() => {
     if (ctxRef.current) return;
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -118,94 +168,116 @@ export function TVMan() {
     noiseGainRef.current = gain;
   }, []);
 
-  // ── Open ─────────────────────────────────────────────────────────────────
+  // ── Open ──────────────────────────────────────────────────────────────────
   const open = useCallback(() => {
     initAudio();
     setPhase("zooming");
-    setTimeout(() => setPhase("detuned"), 560);
-  }, [initAudio]);
 
-  // ── Close ────────────────────────────────────────────────────────────────
+    const ctx = ctxRef.current;
+    if (ctx) {
+      const canOpus = document.createElement("audio").canPlayType("audio/webm; codecs=opus") !== "";
+      fetch("/api/audio", { headers: { Accept: canOpus ? "audio/webm" : "audio/mpeg" } })
+        .then(r => r.arrayBuffer())
+        .then(buf => ctx.decodeAudioData(buf))
+        .then(decoded => { songBufRef.current = decoded; startSong(decoded); })
+        .catch(() => {});
+    }
+
+    setTimeout(() => setPhase("detuned"), 560);
+  }, [initAudio, startSong]);
+
+  // ── Close ─────────────────────────────────────────────────────────────────
   const close = useCallback(() => {
     clearT();
+    if (zoneTimerRef.current) { clearTimeout(zoneTimerRef.current); zoneTimerRef.current = null; }
+    if (clearIvRef.current)   { clearInterval(clearIvRef.current);  clearIvRef.current = null; }
     cancelAnimationFrame(rafRef.current);
-    const g = noiseGainRef.current, c = ctxRef.current;
-    if (g && c) g.gain.setTargetAtTime(0, c.currentTime, 0.1);
-    if (musicRef.current) { try { musicRef.current.stop(); } catch (_) {} musicRef.current = null; }
+    cancelAnimationFrame(lockRafRef.current);
+
+    const c = ctxRef.current;
+    if (noiseGainRef.current && c) noiseGainRef.current.gain.setTargetAtTime(0, c.currentTime, 0.1);
+    if (songGainRef.current   && c) songGainRef.current.gain.setTargetAtTime(0, c.currentTime, 0.2);
+    if (songSrcRef.current) { try { songSrcRef.current.stop(); } catch (_) {} songSrcRef.current = null; }
+
     setPhase("idle");
   }, [clearT]);
 
-  // ── Noise volume by phase ────────────────────────────────────────────────
+  // ── Noise volume by phase ─────────────────────────────────────────────────
   useEffect(() => {
     const g = noiseGainRef.current, c = ctxRef.current;
     if (!g || !c) return;
-    const now = c.currentTime;
     const vol =
-      phase === "detuned"  ? (1 - proximity) * 0.55 :
-      phase === "locking"  ? 0.72 :
+      phase === "detuned"  ? (1 - proximity) * 0.5 :
+      phase === "locking"  ? 0.35 :
       phase === "jitter"   ? 0.6  :
       phase === "booting"  ? 0.45 :
       0;
-    g.gain.setTargetAtTime(vol, now, 0.07);
+    g.gain.setTargetAtTime(vol, c.currentTime, 0.07);
   }, [proximity, phase]);
 
-  // ── Zone detection → locking transition ──────────────────────────────────
+  // ── Zone detection: hold 3s → locking ────────────────────────────────────
   useEffect(() => {
-    if (phase !== "detuned") return;
-    if (!inZone) return;
+    if (phase !== "detuned") {
+      if (zoneTimerRef.current) { clearTimeout(zoneTimerRef.current); zoneTimerRef.current = null; }
+      return;
+    }
+    if (!inZone) {
+      if (zoneTimerRef.current) { clearTimeout(zoneTimerRef.current); zoneTimerRef.current = null; }
+      return;
+    }
+    if (zoneTimerRef.current) return; // already waiting
 
-    // Randomize lock duration 5–8 s
-    lockMsRef.current = 5000 + Math.floor(Math.random() * 3000);
-    setPhase("locking");
+    zoneTimerRef.current = setTimeout(() => {
+      zoneTimerRef.current = null;
+      setPhase("locking");
 
-    clearT();
-    timerRef.current = setTimeout(() => {
-      // Locking done → synced
-      setPhase("synced");
+      // Progressive audio clearing over LOCK_CLEAR_MS
+      const clearStart = performance.now();
+      clearIvRef.current = setInterval(() => {
+        const p = Math.min((performance.now() - clearStart) / LOCK_CLEAR_MS, 1);
+        if (distortRef.current)  distortRef.current.curve = makeDistortCurve(400 * (1 - p));
+        if (songFiltRef.current) {
+          songFiltRef.current.Q.value          = 4.0 - 3.7 * p;        // narrow → wide
+          songFiltRef.current.frequency.value  = 1800 + 2200 * p;      // boost toward full range
+        }
+        if (songGainRef.current && ctxRef.current)
+          songGainRef.current.gain.setTargetAtTime(0.05 + 0.7 * p, ctxRef.current.currentTime, 0.05);
+        if (p >= 1) { if (clearIvRef.current) { clearInterval(clearIvRef.current); clearIvRef.current = null; } }
+      }, 50);
 
-      const canOpus = document.createElement("audio").canPlayType("audio/webm; codecs=opus") !== "";
-      const audioCtx = ctxRef.current;
-      if (audioCtx) {
-        fetch("/api/audio", { headers: { Accept: canOpus ? "audio/webm" : "audio/mpeg" } })
-          .then(r => r.arrayBuffer())
-          .then(buf => audioCtx.decodeAudioData(buf))
-          .then(decoded => {
-            if (!ctxRef.current) return;
-            const src  = ctxRef.current.createBufferSource();
-            src.buffer = decoded;
-            const vol  = ctxRef.current.createGain();
-            vol.gain.value = 0.75;
-            src.connect(vol);
-            vol.connect(ctxRef.current.destination);
-            const slack = Math.max(0, decoded.duration - 6);
-            src.start(0, Math.random() * slack, 5);
-            musicRef.current = src;
-          })
-          .catch(() => {});
-      }
-
+      clearT();
       timerRef.current = setTimeout(() => {
-        if (musicRef.current) { try { musicRef.current.stop(); } catch (_) {} musicRef.current = null; }
-        setPhase("jitter");
+        setPhase("synced");
 
         timerRef.current = setTimeout(() => {
-          setPhase("shutoff");
+          // Fade song out before jitter
+          if (songGainRef.current && ctxRef.current)
+            songGainRef.current.gain.setTargetAtTime(0, ctxRef.current.currentTime, 0.4);
+          setPhase("jitter");
 
           timerRef.current = setTimeout(() => {
-            setPhase("booting");
-            setTarget(prev => shiftTarget(prev));
+            setPhase("shutoff");
 
             timerRef.current = setTimeout(() => {
-              setPhase("detuned");
-            }, BOOT_MS);
-          }, SHUTOFF_MS);
-        }, JITTER_MS);
-      }, MUSIC_MS);
-    }, lockMsRef.current);
+              // Reset song to distorted for next round
+              if (songBufRef.current) startSong(songBufRef.current);
+              setPhase("booting");
+              setTarget(prev => shiftTarget(prev));
+
+              timerRef.current = setTimeout(() => setPhase("detuned"), BOOT_MS);
+            }, SHUTOFF_MS);
+          }, JITTER_MS);
+        }, MUSIC_MS);
+      }, LOCK_CLEAR_MS);
+    }, ZONE_WAIT_MS);
+
+    return () => {
+      if (zoneTimerRef.current) { clearTimeout(zoneTimerRef.current); zoneTimerRef.current = null; }
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inZone, phase]);
 
-  // ── Eye canvas (detuned / jitter / booting) ───────────────────────────────
+  // ── Eye canvas: detuned / jitter / booting ────────────────────────────────
   useEffect(() => {
     const canvas = eyeCanvasRef.current;
     if (!canvas) return;
@@ -215,57 +287,64 @@ export function TVMan() {
       canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
       return;
     }
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const ctx2 = canvas.getContext("2d");
+    if (!ctx2) return;
     const draw = () => {
       rafRef.current = requestAnimationFrame(draw);
       const { width: W, height: H } = canvas;
-      const id = ctx.createImageData(W, H);
+      const id = ctx2.createImageData(W, H);
       const d  = id.data;
-      const a  =
+      // In zone: reduce alpha (60% at center), outside: 100%
+      const a =
         phase === "booting" ? 215 :
         phase === "jitter"  ? 200 :
-        Math.round((1 - proximity * 0.75) * 230);
+        Math.round(230 * (1 - 0.4 * proximity));
       for (let i = 0; i < d.length; i += 4) {
         const v = (Math.random() * 255) | 0;
-        d[i] = d[i+1] = d[i+2] = v;
-        d[i+3] = a;
+        d[i] = d[i+1] = d[i+2] = v; d[i+3] = a;
       }
-      ctx.putImageData(id, 0, 0);
+      ctx2.putImageData(id, 0, 0);
     };
     draw();
     return () => cancelAnimationFrame(rafRef.current);
   }, [phase, proximity]);
 
-  // ── Lock canvas (locking — full-face heavy static) ────────────────────────
-  const lockRafRef = useRef(0);
+  // ── Lock canvas: locking — 3s full → 4s gradual clear ────────────────────
   useEffect(() => {
     const canvas = lockCanvasRef.current;
     if (!canvas || phase !== "locking") {
       cancelAnimationFrame(lockRafRef.current);
+      canvas?.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
       return;
     }
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const ctx2 = canvas.getContext("2d");
+    if (!ctx2) return;
+    const lockStart = performance.now();
     const draw = () => {
       lockRafRef.current = requestAnimationFrame(draw);
       const { width: W, height: H } = canvas;
-      const id = ctx.createImageData(W, H);
+      const id = ctx2.createImageData(W, H);
       const d  = id.data;
+      const elapsed = performance.now() - lockStart;
+      let alpha: number;
+      if (elapsed < ZONE_WAIT_MS) {
+        alpha = 210;
+      } else {
+        const p = Math.min((elapsed - ZONE_WAIT_MS) / LOCK_CLEAR_MS, 1);
+        alpha = Math.round(210 - 185 * p); // 210 → 25
+      }
       for (let i = 0; i < d.length; i += 4) {
         const v = (Math.random() * 255) | 0;
-        d[i] = d[i+1] = d[i+2] = v;
-        d[i+3] = 200;
+        d[i] = d[i+1] = d[i+2] = v; d[i+3] = alpha;
       }
-      ctx.putImageData(id, 0, 0);
+      ctx2.putImageData(id, 0, 0);
     };
     draw();
     return () => cancelAnimationFrame(lockRafRef.current);
   }, [phase]);
 
-  // ── Swipe-anywhere drag (horizontal → knob rotation) ─────────────────────
+  // ── Swipe-anywhere drag ───────────────────────────────────────────────────
   const onSwipeDown = useCallback((e: React.PointerEvent) => {
-    // Skip if touch lands on a button
     if ((e.target as HTMLElement).closest("button")) return;
     if (phase !== "detuned") return;
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -285,31 +364,27 @@ export function TVMan() {
   const showOverlay = phase !== "idle" && phase !== "zooming";
   const darkScreen  = phase === "shutoff" || phase === "booting";
   const showSmoke   = phase === "locking" || phase === "shutoff";
-  const visualKnob  = knobAngle - 135; // -135° to +135°
+  const visualKnob  = knobAngle - 135;
 
   const lightColor =
-    phase === "synced"   ? "#00ff55"  :
-    phase === "locking"  ? "#ffaa00"  :
-    proximity > 0.5      ? "#ff8800"  :
+    phase === "synced"  ? "#00ff55" :
+    phase === "locking" ? "#ffaa00" :
+    proximity > 0.5     ? "#ff8800" :
     "#ff2222";
 
-  const lightStyle: React.CSSProperties =
-    phase === "locking"
-      ? { animation: "lightPulse 0.55s ease-in-out infinite" }
-      : {};
+  const lightPulse: React.CSSProperties =
+    phase === "locking" ? { animation: "lightPulse 0.55s ease-in-out infinite" } : {};
 
   const posPercent = (knobAngle / KNOB_MAX) * 100;
 
   return (
     <>
-      {/* ── Easter egg: TV man body, bottom-center ───────────────────────── */}
+      {/* ── Easter egg trigger: TV man body ──────────────────────────────── */}
       <div
         className="fixed bottom-0 left-1/2 z-30 select-none"
         style={{
           width:           "9vh",
-          transform:       phase === "zooming"
-            ? "translateX(-50%) scale(18)"
-            : "translateX(-50%) scale(1)",
+          transform:       phase === "zooming" ? "translateX(-50%) scale(18)" : "translateX(-50%) scale(1)",
           transformOrigin: "50% 12%",
           opacity:         phase === "idle" ? 1 : 0,
           transition:      "transform 0.52s ease-in, opacity 0.3s ease-in",
@@ -348,7 +423,6 @@ export function TVMan() {
           onPointerUp={onSwipeUp}
           onPointerCancel={onSwipeUp}
         >
-          {/* TV container centered, leaves 56px for tune indicator */}
           <div
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
             style={{ paddingBottom: "56px" }}
@@ -364,78 +438,72 @@ export function TVMan() {
                 alt="TV"
                 draggable={false}
                 className="w-full h-full object-contain select-none pointer-events-none"
-                style={{
-                  animation: phase === "jitter" ? "tvJitter 0.09s infinite" : undefined,
-                }}
+                style={{ animation: phase === "jitter" ? "tvJitter 0.09s infinite" : undefined }}
               />
 
-              {/* Eye-area canvas: detuned / jitter / booting */}
+              {/* Static — detuned / jitter / booting */}
               <canvas
                 ref={eyeCanvasRef}
                 width={128}
                 height={96}
                 className="absolute pointer-events-none"
                 style={{
-                  left:           "27%", top: "23%",
-                  width:          "46%", height: "27%",
+                  left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT,
                   imageRendering: "pixelated",
-                  opacity:        (phase === "synced" || phase === "locking") ? 0 : 1,
-                  transition:     "opacity 0.55s ease",
+                  opacity:    phase === "synced" || phase === "locking" ? 0 : 1,
+                  transition: "opacity 0.55s ease",
                 }}
               />
 
-              {/* Locking canvas: full-face heavy static */}
+              {/* Static — locking (gradual clear) */}
               <canvas
                 ref={lockCanvasRef}
                 width={64}
                 height={64}
                 className="absolute pointer-events-none"
                 style={{
-                  left:           "22%", top: "18%",
-                  width:          "56%", height: "56%",
+                  left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT,
                   imageRendering: "pixelated",
-                  opacity:        phase === "locking" ? 1 : 0,
-                  transition:     "opacity 0.4s ease",
+                  opacity:    phase === "locking" ? 1 : 0,
+                  transition: "opacity 0.35s ease",
                 }}
               />
 
-              {/* Smoke puffs: locking + shutoff */}
+              {/* Smoke */}
               {showSmoke && (
                 <>
-                  <SmokePuff left="47%" top="20%" delay="0s"   />
+                  <SmokePuff left="47%" top="20%" delay="0s"    />
                   <SmokePuff left="28%" top="42%" delay="0.35s" />
                   <SmokePuff left="66%" top="38%" delay="0.7s"  />
                 </>
               )}
 
-              {/* Boot scan-line sweep */}
+              {/* Boot scan line */}
               {phase === "booting" && (
                 <div
                   className="absolute pointer-events-none overflow-hidden"
-                  style={{ left: "27%", top: "23%", width: "46%", height: "27%" }}
+                  style={{ left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT }}
                 >
                   <div style={{
-                    position:        "absolute",
-                    left: 0, right: 0,
-                    height:          "3px",
+                    position: "absolute", left: 0, right: 0, height: "3px",
                     backgroundColor: "rgba(255,255,255,0.55)",
-                    animation:       "scanSweep 0.9s ease-in forwards",
+                    animation: "scanSweep 0.9s ease-in forwards",
                   }} />
                 </div>
               )}
 
-              {/* Dark screen: shutoff / boot */}
+              {/* Dark screen — shutoff / boot */}
               <div
                 className="absolute pointer-events-none"
                 style={{
-                  left: "27%", top: "23%", width: "46%", height: "27%",
+                  left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT,
                   backgroundColor: "#000",
                   opacity:    darkScreen ? (phase === "booting" ? 0.55 : 1) : 0,
                   transition: phase === "shutoff" ? "opacity 0.35s ease-in" : "opacity 0.7s ease-out",
                 }}
               />
 
-              {/* Knob (visual only — drag is swipe-anywhere) */}
+              {/* Knob */}
               <div
                 className="absolute pointer-events-none"
                 style={{ left: "41%", top: "58%", width: "18%", aspectRatio: "1" }}
@@ -453,32 +521,29 @@ export function TVMan() {
               <div
                 className="absolute pointer-events-none rounded-full"
                 style={{
-                  left:            "34%", top: "62%",
-                  width:           "2.8%", aspectRatio: "1",
+                  left: "34%", top: "62%", width: "2.8%", aspectRatio: "1",
                   backgroundColor: lightColor,
-                  boxShadow:       `0 0 8px 3px ${lightColor}99`,
-                  transition:      "background-color 0.25s ease, box-shadow 0.25s ease",
-                  ...lightStyle,
+                  boxShadow:  `0 0 8px 3px ${lightColor}99`,
+                  transition: "background-color 0.25s ease, box-shadow 0.25s ease",
+                  ...lightPulse,
                 }}
               />
 
-              {/* ── X button — pointer-events: auto so it works above swipe layer */}
+              {/* X button */}
               <button
                 onClick={close}
-                className="absolute pointer-events-auto
-                           top-[5%] right-[5%]
-                           flex items-center justify-center
-                           w-9 h-9 text-white/40 hover:text-white/80
-                           text-3xl font-thin transition-colors"
+                className="absolute pointer-events-auto top-[5%] right-[5%]
+                           flex items-center justify-center w-9 h-9
+                           text-white/40 hover:text-white/80 text-3xl font-thin transition-colors"
               >
                 ×
               </button>
 
-              {/* Look frames — wire here when assets are ready */}
+              {/* Eye frames — wire here when assets ready */}
             </div>
           </div>
 
-          {/* ── Tune indicator bar — pinned bottom ───────────────────────── */}
+          {/* Tune indicator */}
           {phase === "detuned" && (
             <div
               className="absolute bottom-0 left-0 right-0 pointer-events-none
@@ -503,15 +568,17 @@ export function TVMan() {
             </div>
           )}
 
-          {/* Locking / synced status hint */}
+          {/* Locking / synced hint */}
           {(phase === "locking" || phase === "synced") && (
             <div
               className="absolute bottom-0 left-0 right-0 pointer-events-none
                          flex items-center justify-center"
               style={{ height: "56px" }}
             >
-              <p className="text-white/30 text-[10px] tracking-[0.4em] font-display uppercase select-none"
-                style={{ animation: phase === "locking" ? "lightPulse 0.55s ease-in-out infinite" : undefined }}>
+              <p
+                className="text-white/30 text-[10px] tracking-[0.4em] font-display uppercase select-none"
+                style={{ animation: phase === "locking" ? "lightPulse 0.55s ease-in-out infinite" : undefined }}
+              >
                 {phase === "locking" ? "SYNTONIZING…" : "SIGNAL LOCKED"}
               </p>
             </div>
