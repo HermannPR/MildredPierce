@@ -15,11 +15,11 @@ const BOOT_MS       = 2400;
 const ZONE_WAIT_MS  = 3000;
 const LOCK_CLEAR_MS = 4000;
 
-// Screen rect in SVG viewBox 0 0 100 100 → x=11,y=12,w=58,h=44
-const SCR_LEFT   = "11%";
+// Screen rect in SVG viewBox 0 0 100 100 → x=10,y=12,w=57,h=50
+const SCR_LEFT   = "10%";
 const SCR_TOP    = "12%";
-const SCR_WIDTH  = "58%";
-const SCR_HEIGHT = "44%";
+const SCR_WIDTH  = "57%";
+const SCR_HEIGHT = "50%";
 
 const clampKnob = (a: number) => Math.max(0, Math.min(KNOB_MAX, a));
 function randTarget() { return SYNC_ZONE + Math.floor(Math.random() * (KNOB_MAX + 1 - 2 * SYNC_ZONE)); }
@@ -131,83 +131,112 @@ function makeDistortCurve(amount: number): Float32Array<ArrayBuffer> {
 }
 
 // ── Code-generated TV body (SVG, viewBox 0 0 100 100) ──────────────────────
+// Layout:  screen x=10,y=12,w=57,h=50  |  right panel x=72,y=9,w=22,h=56
+//          bottom strip x=7,y=68,w=87,h=14  |  feet y=86
 function TVBodySVG({ visualKnob }: { visualKnob: number }) {
-  const ticks = [-60, -30, 0, 30, 60];
+  const ticks = [-50, -25, 0, 25, 50];
+  // knob center & radii
+  const KX = 83, KY = 27, KR = 8, KRO = 9.5;
   return (
     <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"
       style={{ width: "100%", height: "100%", overflow: "visible" }}>
       <defs>
-        <linearGradient id="tvbg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="#242119" />
+        <linearGradient id="tvbg" x1="0.1" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stopColor="#302d24" />
+          <stop offset="60%"  stopColor="#1e1c15" />
+          <stop offset="100%" stopColor="#131109" />
+        </linearGradient>
+        <linearGradient id="tvpanel" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stopColor="#1a1814" />
           <stop offset="100%" stopColor="#0e0d0b" />
         </linearGradient>
-        <radialGradient id="tvkg" cx="35%" cy="30%" r="70%">
-          <stop offset="0%"   stopColor="#3e3c36" />
-          <stop offset="60%"  stopColor="#242220" />
-          <stop offset="100%" stopColor="#131210" />
+        <radialGradient id="tvkg" cx="38%" cy="32%" r="65%">
+          <stop offset="0%"   stopColor="#504c44" />
+          <stop offset="55%"  stopColor="#2c2a26" />
+          <stop offset="100%" stopColor="#141210" />
+        </radialGradient>
+        <radialGradient id="tvkg2" cx="40%" cy="35%" r="65%">
+          <stop offset="0%"   stopColor="#3a3834" />
+          <stop offset="100%" stopColor="#111009" />
         </radialGradient>
       </defs>
 
-      {/* Ambient shadow */}
-      <rect x="6" y="7" width="90" height="84" rx="5" fill="rgba(0,0,0,0.5)" />
+      {/* Drop shadow */}
+      <rect x="7" y="8" width="92" height="86" rx="5" fill="rgba(0,0,0,0.45)" />
 
       {/* Chassis */}
-      <rect x="4" y="5" width="90" height="82" rx="5" fill="url(#tvbg)" />
+      <rect x="4" y="5" width="92" height="84" rx="4" fill="url(#tvbg)" />
+      {/* Outer edge — makes chassis visible against black bg */}
+      <rect x="4" y="5" width="92" height="84" rx="4"
+        fill="none" stroke="#38342a" strokeWidth="0.9" />
 
-      {/* Bevel highlights */}
-      <rect x="4"  y="5"  width="90" height="1.5" rx="1" fill="#2e2c28" opacity="0.65" />
-      <rect x="4"  y="5"  width="1.5" height="82" rx="1" fill="#2a2825" opacity="0.6"  />
-      <rect x="4"  y="85.5" width="90" height="1.5" rx="1" fill="#000" opacity="0.4"  />
-      <rect x="92.5" y="5" width="1.5" height="82" rx="1" fill="#000" opacity="0.35" />
+      {/* Top + left bevel highlights */}
+      <rect x="5"   y="5.5" width="90" height="1.4" rx="0.7" fill="#3e3a30" opacity="0.7" />
+      <rect x="5"   y="5.5" width="1.4" height="82" rx="0.7" fill="#383428" opacity="0.65" />
+      {/* Bottom + right shadow edges */}
+      <rect x="5"   y="87"  width="90" height="1.4" rx="0.7" fill="#000" opacity="0.55" />
+      <rect x="93.6" y="5.5" width="1.4" height="82" rx="0.7" fill="#000" opacity="0.45" />
 
-      {/* Screen bezel */}
-      <rect x="8" y="9" width="64" height="51" rx="3" fill="#090807" />
-      {/* Bezel inset shadows */}
-      <rect x="9"  y="10" width="62" height="1"  fill="#000"    opacity="0.95" />
-      <rect x="9"  y="10" width="1"  height="49" fill="#000"    opacity="0.8"  />
-      <rect x="70" y="10" width="1"  height="49" fill="#1c1a18" opacity="0.5"  />
-      <rect x="9"  y="58" width="62" height="1"  fill="#1c1a18" opacity="0.45" />
+      {/* ── Screen bezel ── */}
+      <rect x="7" y="9" width="63" height="57" rx="3" fill="#141210" />
+      {/* Bezel inset shadow (recessed depth) */}
+      <rect x="8"  y="10" width="61" height="1.2" fill="#000" opacity="0.95" />
+      <rect x="8"  y="10" width="1.2" height="54" fill="#000" opacity="0.85" />
+      <rect x="68" y="10" width="1.2" height="54" fill="#282420" opacity="0.5" />
+      <rect x="8"  y="65" width="61" height="1.2" fill="#282420" opacity="0.4" />
+      {/* Screen surface (canvas positioned here) */}
+      <rect x="10" y="12" width="57" height="50" rx="2" fill="#070504" />
 
-      {/* Screen surface — CRT canvas overlaid here */}
-      <rect x="11" y="12" width="58" height="44" rx="2" fill="#040302" />
+      {/* ── Right control panel ── */}
+      <rect x="72" y="9" width="22" height="57" rx="2" fill="url(#tvpanel)" />
+      {/* Panel inset shadow */}
+      <rect x="72" y="9"  width="22" height="1.2" fill="#000" opacity="0.8" />
+      <rect x="72" y="9"  width="1.2" height="57" fill="#000" opacity="0.6" />
+      <rect x="93" y="9"  width="1.2" height="57" fill="#282420" opacity="0.4" />
 
-      {/* Controls divider */}
-      <line x1="8" y1="63" x2="94" y2="63" stroke="#090807" strokeWidth="0.4" />
-
-      {/* Speaker grille */}
-      <rect x="9" y="65" width="42" height="17" rx="2" fill="#0c0a09" />
-      {[0, 2.8, 5.6, 8.4, 11.2].map((dy) => (
-        <rect key={dy} x="11" y={67 + dy} width="38" height="0.9" rx="0.4" fill="#060504" />
-      ))}
-
-      {/* Main knob — back ring */}
-      <circle cx="77" cy="74" r="12" fill="#050403" />
-      {/* Knob face */}
-      <circle cx="77" cy="74" r="10" fill="url(#tvkg)" />
+      {/* Main tuning knob */}
+      <circle cx={KX} cy={KY} r={KRO} fill="#060402" />
+      <circle cx={KX} cy={KY} r={KR}  fill="url(#tvkg)" />
       {/* Rim ticks */}
       {ticks.map((deg) => {
         const rad = ((deg - 90) * Math.PI) / 180;
         return (
           <line key={deg}
-            x1={77 + Math.cos(rad) * 10.6} y1={74 + Math.sin(rad) * 10.6}
-            x2={77 + Math.cos(rad) * 12.2} y2={74 + Math.sin(rad) * 12.2}
-            stroke="#1e1c18" strokeWidth="0.7" />
+            x1={KX + Math.cos(rad) * (KR + 0.6)} y1={KY + Math.sin(rad) * (KR + 0.6)}
+            x2={KX + Math.cos(rad) * (KRO - 0.2)} y2={KY + Math.sin(rad) * (KRO - 0.2)}
+            stroke="#2a2824" strokeWidth="0.7" />
         );
       })}
       {/* Rotating indicator */}
-      <g transform={`rotate(${visualKnob} 77 74)`}>
-        <line x1="77" y1="65" x2="77" y2="68.8"
-          stroke="#909088" strokeWidth="2" strokeLinecap="round" />
+      <g transform={`rotate(${visualKnob} ${KX} ${KY})`}>
+        <line x1={KX} y1={KY - KR + 0.5} x2={KX} y2={KY - KR + 4}
+          stroke="#b0aea8" strokeWidth="2" strokeLinecap="round" />
       </g>
 
-      {/* Small secondary knob */}
-      <circle cx="90" cy="74" r="7.5" fill="#040302" />
-      <circle cx="90" cy="74" r="6"   fill="#1c1a16" />
-      <circle cx="90" cy="74" r="2.2" fill="#121009" />
+      {/* Secondary knob */}
+      <circle cx={KX} cy="47" r="6.5" fill="#050301" />
+      <circle cx={KX} cy="47" r="5.5" fill="url(#tvkg2)" />
+      <circle cx={KX} cy="41.8" r="1.1" fill="#484440" />
+
+      {/* Speaker dot grid */}
+      {[0, 1, 2, 3].map(row => [0, 1, 2, 3].map(col => (
+        <circle key={`${row}-${col}`}
+          cx={75 + col * 4.2} cy={57 + row * 3.6}
+          r="0.9" fill="#0e0c0a" />
+      )))}
+
+      {/* ── Bottom strip ── */}
+      <rect x="7" y="68" width="87" height="14" rx="2" fill="#111009" />
+      {/* Vent slots */}
+      {Array.from({ length: 9 }, (_, i) => (
+        <rect key={i} x={10 + i * 8} y="71" width="4.5" height="1.2" rx="0.6" fill="#0a0806" />
+      ))}
+      {/* Nameplate */}
+      <rect x="36" y="75" width="24" height="4" rx="1" fill="#0c0a07" />
 
       {/* Feet */}
-      <rect x="11" y="87" width="11" height="7" rx="2.5" fill="#0a0908" />
-      <rect x="78" y="87" width="11" height="7" rx="2.5" fill="#0a0908" />
+      <rect x="10" y="86" width="13" height="8" rx="2.5" fill="#0c0a08" />
+      <rect x="77" y="86" width="13" height="8" rx="2.5" fill="#0c0a08" />
     </svg>
   );
 }
@@ -215,7 +244,7 @@ function TVBodySVG({ visualKnob }: { visualKnob: number }) {
 // ── Trigger silhouette (small TV man) ─────────────────────────────────────
 function TriggerTVSVG() {
   return (
-    <svg viewBox="0 0 50 92" xmlns="http://www.w3.org/2000/svg"
+    <svg viewBox="0 -14 50 106" xmlns="http://www.w3.org/2000/svg"
       style={{ width: "100%", height: "auto" }}>
       {/* Antennas */}
       <line x1="20" y1="1"  x2="13" y2="-11" stroke="#131110" strokeWidth="1.6" strokeLinecap="round" />
@@ -342,7 +371,7 @@ export function TVMan() {
   useEffect(() => {
     const canvas = crtCanvasRef.current; if (!canvas) return;
     const ctx = canvas.getContext("2d"); if (!ctx) return;
-    const nc = document.createElement("canvas"); nc.width = 32; nc.height = 24;
+    const nc = document.createElement("canvas"); nc.width = 32; nc.height = 28;
     const nCtx = nc.getContext("2d")!;
 
     const draw = () => {
@@ -371,7 +400,7 @@ export function TVMan() {
       else if (ph === "booting") na = 0.48;
 
       if (na > 0.01) {
-        const nId = nCtx.createImageData(32, 24); const d = nId.data;
+        const nId = nCtx.createImageData(32, 28); const d = nId.data;
         for (let i = 0; i < d.length; i += 4) { const v = (Math.random() * 255) | 0; d[i] = d[i+1] = d[i+2] = v; d[i+3] = 255; }
         nCtx.putImageData(nId, 0, 0);
         ctx.globalAlpha = na; ctx.imageSmoothingEnabled = false;
@@ -557,7 +586,7 @@ export function TVMan() {
                 left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT,
                 borderRadius: "3px", zIndex: 4,
               }}>
-                <canvas ref={crtCanvasRef} width={128} height={96}
+                <canvas ref={crtCanvasRef} width={128} height={112}
                   className="w-full h-full"
                   style={{ display: "block", imageRendering: "pixelated" }} />
               </div>
