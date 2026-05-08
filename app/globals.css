@@ -34,6 +34,34 @@ body::before {
   );
 }
 
+/* ── TV Man animations ────────────────────────── */
+@keyframes tvJitter {
+  0%   { transform: translate(0,0); }
+  10%  { transform: translate(-5px,-2px) skewX(-0.6deg); }
+  20%  { transform: translate(5px, 2px); }
+  30%  { transform: translate(-4px, 3px) skewX(0.8deg); }
+  40%  { transform: translate(6px,-2px); }
+  50%  { transform: translate(-6px, 1px) skewX(-1deg); }
+  60%  { transform: translate(4px,-4px); }
+  70%  { transform: translate(-5px, 2px) skewX(0.6deg); }
+  80%  { transform: translate(5px, 1px); }
+  90%  { transform: translate(-3px,-3px) skewX(-0.5deg); }
+  100% { transform: translate(0,0); }
+}
+@keyframes smokeRise {
+  0%   { opacity: 0.7; transform: translateY(0)    scale(1);   filter: blur(0px); }
+  50%  { opacity: 0.4; transform: translateY(-18px) scale(1.6); filter: blur(3px); }
+  100% { opacity: 0;   transform: translateY(-50px) scale(2.8); filter: blur(10px); }
+}
+@keyframes tvFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes scanSweep {
+  from { top: 0%; opacity: 0.6; }
+  to   { top: 100%; opacity: 0; }
+}
+
 /* Film grain — very subtle on silk */
 body::after {
   content: "";
