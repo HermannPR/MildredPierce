@@ -86,7 +86,6 @@ export function TVMan() {
   const [knobAngle,   setKnobAngle]   = useState(135); // start at midpoint
   const [target,      setTarget]      = useState(randTarget);
   const [syncedFrame, setSyncedFrame] = useState(0);
-  const [jitter,      setJitter]      = useState({ x: 0, y: 0, r: 0 });
 
   // Derived (linear range, no wrap)
   const dist      = Math.abs(knobAngle - target);
@@ -289,11 +288,6 @@ export function TVMan() {
     const step = () => {
       idx = (idx + 1) % FRAME_HOLDS.length;
       setSyncedFrame(idx);
-      setJitter({
-        x: (Math.random() - 0.5) * 4,
-        y: (Math.random() - 0.5) * 4,
-        r: (Math.random() - 0.5) * 0.7,
-      });
       syncTimerRef.current = setTimeout(step, FRAME_HOLDS[idx]);
     };
     syncTimerRef.current = setTimeout(step, FRAME_HOLDS[0]);
@@ -394,7 +388,7 @@ export function TVMan() {
               className="relative pointer-events-none"
               style={{ width: "min(100vw, calc(100vh - 56px))", aspectRatio: "1" }}
             >
-              {/* TV head — hidden during synced (replaced by eye frames) */}
+              {/* TV head */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/tv/tvheadonly.png"
@@ -403,25 +397,8 @@ export function TVMan() {
                 className="w-full h-full object-contain select-none pointer-events-none"
                 style={{
                   animation: phase === "jitter" ? "tvJitter 0.09s infinite" : undefined,
-                  opacity:   phase === "synced" ? 0 : 1,
-                  transition: "opacity 0.25s ease",
                 }}
               />
-
-              {/* Eye frame animation — replaces TV head during synced */}
-              {phase === "synced" && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={`/tv/eye/frame${String(syncedFrame + 1).padStart(2, "0")}.png`}
-                  alt=""
-                  draggable={false}
-                  className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none"
-                  style={{
-                    transform:  `translate(${jitter.x}px, ${jitter.y}px) rotate(${jitter.r}deg)`,
-                    transition: "transform 0.06s ease-out",
-                  }}
-                />
-              )}
 
               {/* Eye-area canvas: detuned / jitter / booting */}
               <canvas
@@ -452,6 +429,18 @@ export function TVMan() {
                   transition:     "opacity 0.4s ease",
                 }}
               />
+
+              {/* Eye frame animation — synced */}
+              {phase === "synced" && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/tv/eye/frame${String(syncedFrame + 1).padStart(2, "0")}.png`}
+                  alt=""
+                  draggable={false}
+                  className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none"
+                  style={{ mixBlendMode: "multiply" }}
+                />
+              )}
 
               {/* Smoke puffs: locking + shutoff */}
               {showSmoke && (
