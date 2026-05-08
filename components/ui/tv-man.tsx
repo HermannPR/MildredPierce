@@ -7,26 +7,24 @@ type Phase =
   | "idle"
   | "zooming"
   | "detuned"
-  | "locking"   // 3s full static → 4s gradual clear
-  | "synced"    // clean audio, 20s
+  | "locking"
+  | "synced"
   | "jitter"
   | "shutoff"
   | "booting";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const SYNC_ZONE     = 28;    // ±° from target = in zone
+const SYNC_ZONE     = 28;
 const KNOB_MAX      = 270;
-const MUSIC_MS      = 20000; // 20s clean music
+const MUSIC_MS      = 20000;
 const JITTER_MS     = 1400;
 const SHUTOFF_MS    = 900;
 const BOOT_MS       = 2400;
-const ZONE_WAIT_MS  = 3000;  // hold in zone before clearing starts
-const LOCK_CLEAR_MS = 4000;  // static clearing duration
+const ZONE_WAIT_MS  = 3000;
+const LOCK_CLEAR_MS = 4000;
 
-// Eye frame hold times (ms) per spec
 const FRAME_HOLDS = [500, 200, 200, 200, 200, 300, 400, 200, 200, 300, 400, 500];
 
-// Screen area within tvheadonly.png — inset from bezel edges
 const SCR_LEFT   = "25%";
 const SCR_TOP    = "21%";
 const SCR_WIDTH  = "50%";
@@ -42,6 +40,23 @@ function shiftTarget(prev: number) {
   let next: number;
   do { next = randTarget(); } while (Math.abs(next - prev) < 60);
   return next;
+}
+
+function roundRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number, r: number
+) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
 }
 
 // ── WebAudio ──────────────────────────────────────────────────────────────────
@@ -107,7 +122,6 @@ export function TVMan() {
   // ── Audio refs ─────────────────────────────────────────────────────────────
   const ctxRef       = useRef<AudioContext | null>(null);
   const noiseGainRef = useRef<GainNode | null>(null);
-  // Song chain: src → waveshaper → bandpass → gain → destination
   const songBufRef   = useRef<AudioBuffer | null>(null);
   const songSrcRef   = useRef<AudioBufferSourceNode | null>(null);
   const distortRef   = useRef<WaveShaperNode | null>(null);
@@ -117,11 +131,14 @@ export function TVMan() {
   // ── Swipe ──────────────────────────────────────────────────────────────────
   const swipeRef = useRef({ active: false, lastX: 0 });
 
-  // ── Canvas ─────────────────────────────────────────────────────────────────
-  const eyeCanvasRef  = useRef<HTMLCanvasElement>(null);
-  const lockCanvasRef = useRef<HTMLCanvasElement>(null);
-  const rafRef        = useRef(0);
-  const lockRafRef    = useRef(0);
+  // ── Unified CRT canvas ────────────────────────────────────────────────────
+  const crtCanvasRef      = useRef<HTMLCanvasElement>(null);
+  const crtRafRef         = useRef(0);
+  const phaseRef          = useRef<Phase>("idle");
+  const proximityRef      = useRef(0);
+  const lockPhaseStartRef = useRef(0);
+  const bootStartRef      = useRef(0);
+  const shutoffStartRef   = useRef(0);
 
   // ── Timers ─────────────────────────────────────────────────────────────────
   const timerRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -133,7 +150,7 @@ export function TVMan() {
     if (timerRef.current) clearTimeout(timerRef.current);
   }, []);
 
-  // ── Start distorted song ──────────────────────────────────────────────────
+  // ── startSong ─────────────────────────────────────────────────────────────
   const startSong = useCallback((decoded: AudioBuffer) => {
     const ctx = ctxRef.current;
     if (!ctx) return;
@@ -144,13 +161,13 @@ export function TVMan() {
     src.loop   = true;
 
     const distort = ctx.createWaveShaper();
-    distort.curve       = makeDistortCurve(400);
-    distort.oversample  = "4x";
+    distort.curve      = makeDistortCurve(400);
+    distort.oversample = "4x";
 
     const filt = ctx.createBiquadFilter();
-    filt.type  = "bandpass";
+    filt.type            = "bandpass";
     filt.frequency.value = 1800;
-    filt.Q.value = 4.0;
+    filt.Q.value         = 4.0;
 
     const gain = ctx.createGain();
     gain.gain.value = 0.05;
@@ -165,7 +182,7 @@ export function TVMan() {
     songGainRef.current = gain;
   }, []);
 
-  // ── Audio init ────────────────────────────────────────────────────────────
+  // ── initAudio ─────────────────────────────────────────────────────────────
   const initAudio = useCallback(() => {
     if (ctxRef.current) return;
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -174,7 +191,7 @@ export function TVMan() {
     noiseGainRef.current = gain;
   }, []);
 
-  // ── Open ──────────────────────────────────────────────────────────────────
+  // ── open ──────────────────────────────────────────────────────────────────
   const open = useCallback(() => {
     initAudio();
     setPhase("zooming");
@@ -192,13 +209,12 @@ export function TVMan() {
     setTimeout(() => setPhase("detuned"), 560);
   }, [initAudio, startSong]);
 
-  // ── Close ─────────────────────────────────────────────────────────────────
+  // ── close ─────────────────────────────────────────────────────────────────
   const close = useCallback(() => {
     clearT();
     if (zoneTimerRef.current) { clearTimeout(zoneTimerRef.current); zoneTimerRef.current = null; }
     if (clearIvRef.current)   { clearInterval(clearIvRef.current);  clearIvRef.current = null; }
-    cancelAnimationFrame(rafRef.current);
-    cancelAnimationFrame(lockRafRef.current);
+    cancelAnimationFrame(crtRafRef.current);
 
     const c = ctxRef.current;
     if (noiseGainRef.current && c) noiseGainRef.current.gain.setTargetAtTime(0, c.currentTime, 0.1);
@@ -208,15 +224,118 @@ export function TVMan() {
     setPhase("idle");
   }, [clearT]);
 
+  // ── Sync refs ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    phaseRef.current = phase;
+    if (phase === "shutoff") shutoffStartRef.current = performance.now();
+    if (phase === "booting") bootStartRef.current    = performance.now();
+  }, [phase]);
+
+  useEffect(() => { proximityRef.current = proximity; }, [proximity]);
+
+  // ── Unified CRT canvas RAF ────────────────────────────────────────────────
+  useEffect(() => {
+    const canvas = crtCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Small offscreen canvas — scaled up for chunky analog pixel look
+    const nc = document.createElement("canvas");
+    nc.width = 32; nc.height = 24;
+    const nCtx = nc.getContext("2d")!;
+
+    const draw = () => {
+      crtRafRef.current = requestAnimationFrame(draw);
+      const phase = phaseRef.current;
+      const { width: W, height: H } = canvas;
+
+      ctx.clearRect(0, 0, W, H);
+      if (phase === "idle" || phase === "zooming") return;
+
+      // Clip all drawing to CRT rounded shape
+      ctx.save();
+      roundRectPath(ctx, 0, 0, W, H, 5);
+      ctx.clip();
+
+      // ── Compute noise alpha ─────────────────────────────────────────────
+      let noiseAlpha = 0;
+      if (phase === "detuned") {
+        noiseAlpha = 0.5 * (1 - 0.42 * proximityRef.current);
+      } else if (phase === "locking") {
+        const elapsed = performance.now() - lockPhaseStartRef.current;
+        noiseAlpha = 0.5 * Math.max(0, 1 - elapsed / LOCK_CLEAR_MS);
+      } else if (phase === "jitter") {
+        noiseAlpha = 0.72;
+      } else if (phase === "booting") {
+        noiseAlpha = 0.48;
+      }
+
+      // ── Draw chunky analog noise ────────────────────────────────────────
+      if (noiseAlpha > 0.01) {
+        const nId = nCtx.createImageData(32, 24);
+        const d = nId.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const v = (Math.random() * 255) | 0;
+          d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255;
+        }
+        nCtx.putImageData(nId, 0, 0);
+        ctx.globalAlpha = noiseAlpha;
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(nc, 0, 0, W, H);
+        ctx.globalAlpha = 1;
+        ctx.imageSmoothingEnabled = true;
+      }
+
+      // ── Phosphor scanlines (always part of CRT surface) ─────────────────
+      ctx.fillStyle = "rgba(0,0,0,0.13)";
+      for (let y = 2; y < H; y += 4) ctx.fillRect(0, y, W, 2);
+
+      // ── Vignette / phosphor bloom ───────────────────────────────────────
+      const vg = ctx.createRadialGradient(
+        W * 0.5, H * 0.42, W * 0.06,
+        W * 0.5, H * 0.52, W * 0.84
+      );
+      vg.addColorStop(0,    "rgba(0,0,0,0)");
+      vg.addColorStop(0.45, "rgba(0,0,0,0.05)");
+      vg.addColorStop(1,    "rgba(0,0,0,0.72)");
+      ctx.fillStyle = vg;
+      ctx.fillRect(0, 0, W, H);
+
+      // ── Screen state overlays ───────────────────────────────────────────
+      if (phase === "shutoff") {
+        const p = Math.min((performance.now() - shutoffStartRef.current) / SHUTOFF_MS, 1);
+        ctx.fillStyle = `rgba(0,0,0,${0.97 * p})`;
+        ctx.fillRect(0, 0, W, H);
+      } else if (phase === "booting") {
+        ctx.fillStyle = "rgba(0,0,0,0.64)";
+        ctx.fillRect(0, 0, W, H);
+        const elapsed = performance.now() - bootStartRef.current;
+        const scanT = Math.min(elapsed / 900, 1);
+        const scanY = scanT * H;
+        const scanA = 0.5 * (1 - scanT);
+        if (scanA > 0.01) {
+          ctx.fillStyle = `rgba(255,255,255,${scanA})`;
+          ctx.fillRect(0, scanY - 2, W, 3);
+        }
+      }
+
+      ctx.restore();
+    };
+
+    draw();
+    return () => cancelAnimationFrame(crtRafRef.current);
+  }, []); // mount once — reads all mutable state via refs
+
   // ── Noise volume by phase ─────────────────────────────────────────────────
   useEffect(() => {
     const g = noiseGainRef.current, c = ctxRef.current;
     if (!g || !c) return;
     const vol =
-      phase === "detuned"  ? (1 - proximity) * 0.5 :
-      phase === "locking"  ? 0.35 :
-      phase === "jitter"   ? 0.6  :
-      phase === "booting"  ? 0.45 :
+      phase === "detuned" ? (1 - proximity) * 0.5 :
+      phase === "locking" ? 0.35 :
+      phase === "jitter"  ? 0.6  :
+      phase === "booting" ? 0.45 :
       0;
     g.gain.setTargetAtTime(vol, c.currentTime, 0.07);
   }, [proximity, phase]);
@@ -231,20 +350,20 @@ export function TVMan() {
       if (zoneTimerRef.current) { clearTimeout(zoneTimerRef.current); zoneTimerRef.current = null; }
       return;
     }
-    if (zoneTimerRef.current) return; // already waiting
+    if (zoneTimerRef.current) return;
 
     zoneTimerRef.current = setTimeout(() => {
       zoneTimerRef.current = null;
       setPhase("locking");
+      lockPhaseStartRef.current = performance.now();
 
-      // Progressive audio clearing over LOCK_CLEAR_MS
       const clearStart = performance.now();
       clearIvRef.current = setInterval(() => {
         const p = Math.min((performance.now() - clearStart) / LOCK_CLEAR_MS, 1);
         if (distortRef.current)  distortRef.current.curve = makeDistortCurve(400 * (1 - p));
         if (songFiltRef.current) {
-          songFiltRef.current.Q.value          = 4.0 - 3.7 * p;        // narrow → wide
-          songFiltRef.current.frequency.value  = 1800 + 2200 * p;      // boost toward full range
+          songFiltRef.current.Q.value         = 4.0 - 3.7 * p;
+          songFiltRef.current.frequency.value = 1800 + 2200 * p;
         }
         if (songGainRef.current && ctxRef.current)
           songGainRef.current.gain.setTargetAtTime(0.05 + 0.7 * p, ctxRef.current.currentTime, 0.05);
@@ -256,7 +375,6 @@ export function TVMan() {
         setPhase("synced");
 
         timerRef.current = setTimeout(() => {
-          // Fade song out before jitter
           if (songGainRef.current && ctxRef.current)
             songGainRef.current.gain.setTargetAtTime(0, ctxRef.current.currentTime, 0.4);
           setPhase("jitter");
@@ -265,7 +383,6 @@ export function TVMan() {
             setPhase("shutoff");
 
             timerRef.current = setTimeout(() => {
-              // Reset song to distorted for next round
               if (songBufRef.current) startSong(songBufRef.current);
               setPhase("booting");
               setTarget(prev => shiftTarget(prev));
@@ -283,73 +400,7 @@ export function TVMan() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inZone, phase]);
 
-  // ── Eye canvas: detuned / jitter / booting ────────────────────────────────
-  useEffect(() => {
-    const canvas = eyeCanvasRef.current;
-    if (!canvas) return;
-    const active = phase === "detuned" || phase === "jitter" || phase === "booting";
-    if (!active) {
-      cancelAnimationFrame(rafRef.current);
-      canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
-      return;
-    }
-    const ctx2 = canvas.getContext("2d");
-    if (!ctx2) return;
-    const draw = () => {
-      rafRef.current = requestAnimationFrame(draw);
-      const { width: W, height: H } = canvas;
-      const id = ctx2.createImageData(W, H);
-      const d  = id.data;
-      // Subtle — eye always visible through static
-      const a =
-        phase === "booting" ? 100 :
-        phase === "jitter"  ? 110 :
-        Math.round(85 * (1 - 0.5 * proximity));
-      for (let i = 0; i < d.length; i += 4) {
-        const v = (Math.random() * 255) | 0;
-        d[i] = d[i+1] = d[i+2] = v; d[i+3] = a;
-      }
-      ctx2.putImageData(id, 0, 0);
-    };
-    draw();
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [phase, proximity]);
-
-  // ── Lock canvas: locking — 3s full → 4s gradual clear ────────────────────
-  useEffect(() => {
-    const canvas = lockCanvasRef.current;
-    if (!canvas || phase !== "locking") {
-      cancelAnimationFrame(lockRafRef.current);
-      canvas?.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
-      return;
-    }
-    const ctx2 = canvas.getContext("2d");
-    if (!ctx2) return;
-    const lockStart = performance.now();
-    const draw = () => {
-      lockRafRef.current = requestAnimationFrame(draw);
-      const { width: W, height: H } = canvas;
-      const id = ctx2.createImageData(W, H);
-      const d  = id.data;
-      const elapsed = performance.now() - lockStart;
-      let alpha: number;
-      if (elapsed < ZONE_WAIT_MS) {
-        alpha = 110;
-      } else {
-        const p = Math.min((elapsed - ZONE_WAIT_MS) / LOCK_CLEAR_MS, 1);
-        alpha = Math.round(110 - 98 * p); // 110 → 12
-      }
-      for (let i = 0; i < d.length; i += 4) {
-        const v = (Math.random() * 255) | 0;
-        d[i] = d[i+1] = d[i+2] = v; d[i+3] = alpha;
-      }
-      ctx2.putImageData(id, 0, 0);
-    };
-    draw();
-    return () => cancelAnimationFrame(lockRafRef.current);
-  }, [phase]);
-
-  // ── Preload eye frames on zoom ────────────────────────────────────────────
+  // ── Preload eye frames ────────────────────────────────────────────────────
   useEffect(() => {
     if (phase !== "zooming") return;
     for (let i = 1; i <= 12; i++) {
@@ -358,7 +409,7 @@ export function TVMan() {
     }
   }, [phase]);
 
-  // ── Eye frame cycle during synced ─────────────────────────────────────────
+  // ── Eye frame cycle ───────────────────────────────────────────────────────
   useEffect(() => {
     if (phase !== "synced") {
       if (syncTimerRef.current) { clearTimeout(syncTimerRef.current); syncTimerRef.current = null; }
@@ -388,7 +439,7 @@ export function TVMan() {
     return () => window.removeEventListener("keydown", handler);
   }, [phase, close]);
 
-  // ── Swipe-anywhere drag ───────────────────────────────────────────────────
+  // ── Swipe ─────────────────────────────────────────────────────────────────
   const onSwipeDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest("button")) return;
     if (phase !== "detuned") return;
@@ -407,13 +458,12 @@ export function TVMan() {
 
   // ── Visual state ──────────────────────────────────────────────────────────
   const showOverlay = phase !== "idle" && phase !== "zooming";
-  const darkScreen  = phase === "shutoff" || phase === "booting";
   const showSmoke   = phase === "locking" || phase === "shutoff";
   const visualKnob  = knobAngle - 135;
 
   return (
     <>
-      {/* ── Easter egg trigger ────────────────────────────────────────────── */}
+      {/* ── Trigger ───────────────────────────────────────────────────────── */}
       <div
         className="fixed bottom-0 left-1/2 z-30 select-none"
         style={{
@@ -442,7 +492,7 @@ export function TVMan() {
         />
       </div>
 
-      {/* ── Full-screen overlay ───────────────────────────────────────────── */}
+      {/* ── Overlay ───────────────────────────────────────────────────────── */}
       {showOverlay && (
         <div
           className="fixed inset-0 z-50"
@@ -457,7 +507,7 @@ export function TVMan() {
           onPointerUp={onSwipeUp}
           onPointerCancel={onSwipeUp}
         >
-          {/* Grain texture */}
+          {/* Paper grain */}
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
@@ -469,13 +519,12 @@ export function TVMan() {
             }}
           />
 
-          {/* TV centered — fills 82% of shortest viewport dimension */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div
               className="relative pointer-events-none"
               style={{ width: "min(82vw, 82vh)", aspectRatio: "1" }}
             >
-              {/* TV head — fades during synced */}
+              {/* TV head — fades during synced, ambient bloom */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/tv/tvheadonly.png"
@@ -486,10 +535,11 @@ export function TVMan() {
                   animation:  phase === "jitter" ? "tvJitter 0.09s infinite" : undefined,
                   opacity:    phase === "synced" ? 0 : 1,
                   transition: "opacity 0.4s ease",
+                  filter:     "drop-shadow(0 0 40px rgba(12,3,3,0.55))",
                 }}
               />
 
-              {/* Eye frame animation — synced */}
+              {/* Eye frames — CRT-filtered full replacement during synced */}
               {phase === "synced" && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -501,90 +551,28 @@ export function TVMan() {
                     transform:  `translate(${jitter.x}px, ${jitter.y}px) rotate(${jitter.r}deg)`,
                     transition: "transform 0.06s ease-out",
                     clipPath:   "inset(8% 0 0 0)",
+                    filter:     "grayscale(1) contrast(0.78) brightness(0.82) blur(0.5px)",
                   }}
                 />
               )}
 
-              {/* ── CRT screen area ──────────────────────────────────────── */}
-
-              {/* Static — detuned / jitter / booting */}
-              <canvas
-                ref={eyeCanvasRef}
-                width={128}
-                height={96}
-                className="absolute pointer-events-none"
-                style={{
-                  left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT,
-                  imageRendering: "pixelated",
-                  borderRadius:   "3px",
-                  opacity:    phase === "synced" || phase === "locking" ? 0 : 1,
-                  transition: "opacity 0.55s ease",
-                }}
-              />
-
-              {/* Static — locking (gradual clear) */}
-              <canvas
-                ref={lockCanvasRef}
-                width={64}
-                height={64}
-                className="absolute pointer-events-none"
-                style={{
-                  left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT,
-                  imageRendering: "pixelated",
-                  borderRadius:   "3px",
-                  opacity:    phase === "locking" ? 1 : 0,
-                  transition: "opacity 0.35s ease",
-                }}
-              />
-
-              {/* CRT scanlines */}
+              {/* Unified CRT canvas — noise + scanlines + vignette as one surface */}
               <div
-                className="absolute pointer-events-none"
-                style={{
-                  left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT,
-                  borderRadius: "3px",
-                  background:   "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px)",
-                  zIndex:       2,
-                }}
-              />
-
-              {/* CRT vignette + edge darkening */}
-              <div
-                className="absolute pointer-events-none"
+                className="absolute pointer-events-none overflow-hidden"
                 style={{
                   left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT,
                   borderRadius: "4px",
-                  boxShadow:    "inset 0 0 22px rgba(0,0,0,0.75), 0 0 22px rgba(160,200,160,0.07), 0 0 55px rgba(120,170,120,0.04)",
-                  zIndex:       3,
+                  zIndex: 4,
                 }}
-              />
-
-              {/* Boot scan line */}
-              {phase === "booting" && (
-                <div
-                  className="absolute pointer-events-none overflow-hidden"
-                  style={{ left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT, borderRadius: "3px", zIndex: 4 }}
-                >
-                  <div style={{
-                    position: "absolute", left: 0, right: 0, height: "3px",
-                    backgroundColor: "rgba(255,255,255,0.45)",
-                    animation: "scanSweep 0.9s ease-in forwards",
-                  }} />
-                </div>
-              )}
-
-              {/* Dark screen — shutoff / boot */}
-              <div
-                className="absolute pointer-events-none"
-                style={{
-                  left: SCR_LEFT, top: SCR_TOP, width: SCR_WIDTH, height: SCR_HEIGHT,
-                  borderRadius:    "3px",
-                  backgroundColor: "#000",
-                  zIndex:          5,
-                  opacity:    darkScreen ? (phase === "booting" ? 0.6 : 1) : 0,
-                  transition: phase === "shutoff" ? "opacity 0.35s ease-in" : "opacity 0.7s ease-out",
-                }}
-              />
+              >
+                <canvas
+                  ref={crtCanvasRef}
+                  width={128}
+                  height={96}
+                  className="w-full h-full"
+                  style={{ display: "block", imageRendering: "pixelated" }}
+                />
+              </div>
 
               {/* Smoke */}
               {showSmoke && (
@@ -595,10 +583,13 @@ export function TVMan() {
                 </>
               )}
 
-              {/* Knob */}
+              {/* Knob — grounded with contact shadow */}
               <div
                 className="absolute pointer-events-none"
-                style={{ left: "24%", top: "62%", width: "11%", aspectRatio: "1" }}
+                style={{
+                  left: "24%", top: "62%", width: "11%", aspectRatio: "1",
+                  filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.9)) drop-shadow(0 1px 3px rgba(0,0,0,0.8))",
+                }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/tv/knobbackpart.png" alt="" draggable={false}
@@ -609,20 +600,7 @@ export function TVMan() {
                   style={{ transform: `rotate(${visualKnob}deg)`, transformOrigin: "50% 50%" }} />
               </div>
 
-              {/* Light — dim dark crimson, barely visible */}
-              <div
-                className="absolute pointer-events-none rounded-full"
-                style={{
-                  left:            "35%", top: "63%",
-                  width:           "1.4%", aspectRatio: "1",
-                  backgroundColor: phase === "synced" ? "#0a2a0a" : "#1a0404",
-                  boxShadow:       phase === "synced" ? "0 0 4px 1px #0a2a0a88" : "0 0 3px 1px #1a040488",
-                  transition:      "background-color 1s ease, box-shadow 1s ease",
-                  animation:       phase === "locking" ? "lightPulse 0.55s ease-in-out infinite" : undefined,
-                }}
-              />
-
-              {/* X — nearly invisible, ESC also works */}
+              {/* Close — nearly invisible */}
               <button
                 onClick={close}
                 className="absolute pointer-events-auto top-[4%] right-[4%]
