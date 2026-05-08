@@ -163,7 +163,8 @@ export function TVMan() {
       // Locking done → synced
       setPhase("synced");
 
-      const audio = new Audio("/tv/song.mp3");
+      const canOpus = document.createElement("audio").canPlayType("audio/webm; codecs=opus") !== "";
+      const audio = new Audio(canOpus ? "/tv/song.webm" : "/tv/song.mp3");
       audio.volume = 0.75;
       audio.addEventListener("loadedmetadata", () => {
         const slack = Math.max(0, audio.duration - 6);
