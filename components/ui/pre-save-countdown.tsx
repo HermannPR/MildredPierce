@@ -62,7 +62,7 @@ export function PreSaveCountdown({ targetDate }: PreSaveCountdownProps) {
       className="font-display tracking-widest select-none tabular-nums transition-opacity hover:opacity-70"
       style={{
         color: RED,
-        fontSize: "clamp(1.8rem, 3.8vw, 3.8rem)",
+        fontSize: "clamp(2.2rem, 5vw, 3.8rem)",
         lineHeight: 1,
         letterSpacing: "0.06em",
         textShadow: `
