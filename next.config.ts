@@ -9,15 +9,15 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            // blob: required by Spline's Web Worker bootstrap
+            // Next.js injects inline scripts; Spline needs blob: workers + eval
             value: [
               "default-src 'self'",
-              "script-src 'self' blob: 'wasm-unsafe-eval' 'inline-speculation-rules'",
-              "worker-src blob:",
+              "script-src 'self' blob: 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' 'inline-speculation-rules'",
+              "worker-src blob: 'self'",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob:",
               "font-src 'self'",
-              "connect-src 'self' prod.spline.design blob:",
+              "connect-src 'self' prod.spline.design blob: data:",
               "media-src 'self' blob:",
             ].join("; "),
           },
