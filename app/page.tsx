@@ -103,15 +103,13 @@ export default function Home() {
         {/* ── Spline — top on mobile, right on desktop ── */}
         <section className="
           order-1 md:order-2
-          h-[18vh] md:h-full
+          h-[44vh] md:h-full
+          -mb-[20vh] md:mb-0
           w-full md:w-[42%] lg:w-[46%]
-          flex-shrink-0 relative overflow-hidden
+          flex-shrink-0 relative
+          z-0 md:z-auto
         ">
-          {/* Mobile: render at 40vh so the face is large, overflow-hidden clips dead bottom.
-              Desktop: inset-0 fills the full section height. */}
-          <div className="absolute inset-x-0 top-0 h-[40vh] md:inset-0 md:h-full">
-            <SplineScene scene={SPLINE_SCENE} className="w-full h-full" />
-          </div>
+          <SplineScene scene={SPLINE_SCENE} className="w-full h-full" />
         </section>
 
         {/* ── Editorial content — bottom on mobile, left on desktop ── */}
@@ -121,6 +119,7 @@ export default function Home() {
           px-6 md:px-10 lg:px-16
           py-3 md:py-0
           gap-0 overflow-hidden
+          relative z-10 md:z-auto
         ">
 
           {/* Top rule */}
