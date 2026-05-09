@@ -55,36 +55,24 @@ export function PreSaveCountdown({ targetDate }: PreSaveCountdownProps) {
   const sep = <span style={{ color: RED_DIM, margin: "0 0.08em" }}>:</span>;
 
   return (
-    <div className="flex flex-col gap-1">
-      <span
-        className="font-display uppercase"
-        style={{
-          color: "rgba(232,16,42,0.7)",
-          fontSize: "clamp(0.7rem, 1.4vw, 1rem)",
-          letterSpacing: "0.28em",
-        }}
-      >
-        Official Release In
-      </span>
-      <a
-        href={PRESAVE_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="font-display tracking-widest select-none tabular-nums transition-opacity hover:opacity-70"
-        style={{
-          color: RED,
-          fontSize: "clamp(1.8rem, 3.8vw, 3.8rem)",
-          lineHeight: 1,
-          letterSpacing: "0.06em",
-          textShadow: `
-            0 0 6px ${RED},
-            0 0 20px ${RED_DIM},
-            0 0 50px rgba(220,10,20,0.35)
-          `,
-        }}
-      >
-        {d}{sep}{h}{sep}{m}{sep}{s}
-      </a>
-    </div>
+    <a
+      href={PRESAVE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="font-display tracking-widest select-none tabular-nums transition-opacity hover:opacity-70"
+      style={{
+        color: RED,
+        fontSize: "clamp(1.8rem, 3.8vw, 3.8rem)",
+        lineHeight: 1,
+        letterSpacing: "0.06em",
+        textShadow: `
+          0 0 6px ${RED},
+          0 0 20px ${RED_DIM},
+          0 0 50px rgba(220,10,20,0.35)
+        `,
+      }}
+    >
+      {d}{sep}{h}{sep}{m}{sep}{s}
+    </a>
   );
 }

@@ -187,19 +187,19 @@ export default function Home() {
                     boxShadow: "0 0 6px 2px rgba(232,16,42,0.7)",
                     animation: "presavePulse 1.2s ease-in-out infinite",
                   }} />
-                  PRE-SAVE OUT NOW
+                  PRE-SAVE
                   <span style={{ opacity: 0.7, fontSize: "0.75em" }}>↗</span>
                 </div>
                 <div
                   className="font-display uppercase transition-opacity group-hover:opacity-60"
                   style={{
-                    color: "rgba(232,16,42,0.5)",
+                    color: "#d4a800",
                     fontSize: "clamp(0.55rem, 1vw, 0.72rem)",
                     letterSpacing: "0.3em",
                     paddingLeft: "calc(0.55em + 0.75rem)",
                   }}
                 >
-                  click here to save · fractal agreement
+                  by amuse
                 </div>
               </a>
 
