@@ -615,18 +615,18 @@ export function TVMan() {
       const current = knobRef.current;
       const diff = target - current;
 
-      if (Math.abs(diff) < 1.2) {
+      // Wobble only when far from target; zero out near it so convergence is guaranteed
+      const wobble = Math.abs(diff) > 18 ? Math.sin(Date.now() * 0.005) * 1.6 : 0;
+      const next = clampKnob(current + diff * 0.028 + wobble);
+
+      if (Math.abs(diff) < 1.5) {
         locked = true;
         clearAutoTune();
         knobRef.current = target;
         setKnobAngle(target);
-        // Pause at target, then lock
-        setTimeout(() => startLocking(), 450);
+        setTimeout(() => startLocking(), 420);
         return;
       }
-
-      const wobble = Math.sin(Date.now() * 0.005) * 2.1;
-      const next = clampKnob(current + diff * 0.022 + wobble);
       knobRef.current = next;
       setKnobAngle(next);
 
