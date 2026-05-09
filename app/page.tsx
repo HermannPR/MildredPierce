@@ -107,9 +107,9 @@ export default function Home() {
           w-full md:w-[42%] lg:w-[46%]
           flex-shrink-0 relative overflow-hidden
         ">
-          {/* On mobile: render the scene at its natural 20vh so framing is correct,
-              then let overflow-hidden clip the dead bottom space */}
-          <div className="absolute inset-x-0 top-0 md:inset-0" style={{ height: "20vh" }}>
+          {/* Mobile: render at 20vh so Spline frames correctly, overflow-hidden clips dead space.
+              Desktop: inset-0 fills the full section height. */}
+          <div className="absolute inset-x-0 top-0 h-[20vh] md:inset-0 md:h-full">
             <SplineScene scene={SPLINE_SCENE} className="w-full h-full" />
           </div>
         </section>
