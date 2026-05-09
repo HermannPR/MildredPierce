@@ -59,9 +59,9 @@ export function PreSaveCountdown({ targetDate }: PreSaveCountdownProps) {
       <span
         className="font-display uppercase"
         style={{
-          color: "rgba(232,16,42,0.45)",
-          fontSize: "clamp(0.55rem, 1vw, 0.72rem)",
-          letterSpacing: "0.3em",
+          color: "rgba(232,16,42,0.7)",
+          fontSize: "clamp(0.7rem, 1.4vw, 1rem)",
+          letterSpacing: "0.28em",
         }}
       >
         Official Release In
