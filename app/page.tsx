@@ -82,7 +82,7 @@ export default function Home() {
 
       {/* ── Background ─────────────────────────────────── */}
       <div className="fixed inset-0 z-0" style={{ backgroundColor: "#0a0a0a" }}>
-        <SmokeBackground smokeColor="#8B0000" />
+        <SmokeBackground smokeColor="#cc0000" />
       </div>
 
       {/* Shader — always mounted (native WebGL), visibility controlled by shaderVisible */}
@@ -103,11 +103,15 @@ export default function Home() {
         {/* ── Spline — top on mobile, right on desktop ── */}
         <section className="
           order-1 md:order-2
-          h-[20vh] md:h-full
+          h-[12vh] md:h-full
           w-full md:w-[42%] lg:w-[46%]
-          flex-shrink-0 relative
+          flex-shrink-0 relative overflow-hidden
         ">
-          <SplineScene scene={SPLINE_SCENE} className="w-full h-full" />
+          {/* On mobile: render the scene at its natural 20vh so framing is correct,
+              then let overflow-hidden clip the dead bottom space */}
+          <div className="absolute inset-x-0 top-0 md:inset-0" style={{ height: "20vh" }}>
+            <SplineScene scene={SPLINE_SCENE} className="w-full h-full" />
+          </div>
         </section>
 
         {/* ── Editorial content — bottom on mobile, left on desktop ── */}
