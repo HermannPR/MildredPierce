@@ -23,7 +23,7 @@ const SmokeBackground = dynamic(
   { ssr: false }
 );
 
-const RELEASE_DATE  = new Date("2026-05-08T20:00:00Z");
+const RELEASE_DATE  = new Date("2026-05-15T00:00:00Z");
 const SPLINE_SCENE  = "https://prod.spline.design/Dor5qQbQC8MafFxN/scene.splinecode";
 
 // ── Palette ──────────────────────────────────────
