@@ -6,8 +6,6 @@ import { Instagram } from "lucide-react";
 import { HoverMorphText } from "@/components/ui/hover-morph-text";
 import { PreSaveCountdown } from "@/components/ui/pre-save-countdown";
 import { CRTIntro } from "@/components/ui/crt-intro";
-import { TVMan } from "@/components/ui/tv-man";
-
 const SplineScene = dynamic(
   () => import("@/components/ui/splite").then((m) => m.SplineScene),
   { ssr: false }
@@ -170,9 +168,6 @@ export default function Home() {
           </div>
         </section>
       </div>
-
-      {/* ── TV Man easter egg ── */}
-      <TVMan />
 
       {/* ── CRT intro ── */}
       {!crtDone && <CRTIntro onComplete={handleCRTDone} />}

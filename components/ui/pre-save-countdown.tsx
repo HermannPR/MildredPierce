@@ -30,14 +30,19 @@ export function PreSaveCountdown({ targetDate }: PreSaveCountdownProps) {
     return () => clearInterval(id);
   }, [targetDate]);
 
+  const PRESAVE_URL = "https://share.amuse.io/track/mildred-pierce-fractal-agreement";
+
   if (remaining?.done) {
     return (
-      <button
+      <a
+        href={PRESAVE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
         className="font-display uppercase tracking-[0.3em] transition-opacity hover:opacity-70"
         style={{ color: RED, fontSize: "clamp(1.1rem, 2.2vw, 1.8rem)" }}
       >
         LISTEN NOW
-      </button>
+      </a>
     );
   }
 
@@ -46,8 +51,11 @@ export function PreSaveCountdown({ targetDate }: PreSaveCountdownProps) {
   const s = remaining ? pad(remaining.s) : "--";
 
   return (
-    <div
-      className="font-display tracking-widest select-none tabular-nums"
+    <a
+      href={PRESAVE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="font-display tracking-widest select-none tabular-nums transition-opacity hover:opacity-70"
       style={{
         color: RED,
         fontSize: "clamp(2.4rem, 5.2vw, 5rem)",
@@ -65,6 +73,6 @@ export function PreSaveCountdown({ targetDate }: PreSaveCountdownProps) {
       {m}
       <span style={{ color: RED_DIM, margin: "0 0.12em" }}>:</span>
       {s}
-    </div>
+    </a>
   );
 }
