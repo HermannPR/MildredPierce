@@ -152,7 +152,30 @@ export default function Home() {
           <div className="h-4 md:h-8 lg:h-12" />
 
           {/* Links + Countdown */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
+            {/* Pre-save button */}
+            <a
+              href="https://share.amuse.io/track/mildred-pierce-fractal-agreement"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-fit font-display uppercase tracking-widest transition-opacity hover:opacity-75 active:opacity-55"
+              style={{
+                color: "#e8102a",
+                fontSize: "clamp(1.5rem, 3.5vw, 3rem)",
+                letterSpacing: "0.18em",
+                lineHeight: 1,
+                textShadow: `
+                  0 0 8px rgba(232,16,42,0.9),
+                  0 0 28px rgba(232,16,42,0.55),
+                  0 0 60px rgba(220,10,20,0.3)
+                `,
+              }}
+            >
+              PRE-SAVE
+            </a>
+
+            <PreSaveCountdown targetDate={RELEASE_DATE} />
+
             <a
               href="https://www.instagram.com/mildredpierce.__?igsh=MWRnOXZwZTZydzZteQ=="
               target="_blank"
@@ -163,8 +186,6 @@ export default function Home() {
               <Instagram size={13} strokeWidth={1.5} />
               Instagram
             </a>
-
-            <PreSaveCountdown targetDate={RELEASE_DATE} />
           </div>
         </section>
       </div>
