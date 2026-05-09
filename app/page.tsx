@@ -94,7 +94,7 @@ export default function Home() {
           transition: "opacity 0.6s ease",
         }}
       >
-        <ShaderAnimation className="w-full h-full" />
+        <ShaderAnimation className="w-full h-full" paused={!shaderVisible} />
       </div>
 
       {/* ── Content ────────────────────────────────────── */}
