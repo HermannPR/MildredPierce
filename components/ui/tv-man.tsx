@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 type Phase =
   | "idle" | "zooming" | "detuned" | "locking"
-  | "synced" | "jitter" | "shutoff" | "booting";
+  | "synced" | "jitter" | "shutoff" | "exploded" | "booting";
+type LightState = "off" | "red" | "green" | "amber";
 
 const SYNC_ZONE     = 28;
 const KNOB_MAX      = 270;
@@ -14,12 +15,15 @@ const SHUTOFF_MS    = 900;
 const BOOT_MS       = 2400;
 const ZONE_WAIT_MS  = 3000;
 const LOCK_CLEAR_MS = 4000;
+const FLASH_MS      = 110;   // white flash before screen dies
 
-// Screen rect in SVG viewBox 0 0 100 100 → x=10,y=12,w=57,h=50
 const SCR_LEFT   = "10%";
 const SCR_TOP    = "12%";
 const SCR_WIDTH  = "57%";
 const SCR_HEIGHT = "50%";
+
+// Virtual channel centers (0–1 normalised knob)
+const CH_POS = [0.10, 0.34, 0.61, 0.84];
 
 const clampKnob = (a: number) => Math.max(0, Math.min(KNOB_MAX, a));
 function randTarget() { return SYNC_ZONE + Math.floor(Math.random() * (KNOB_MAX + 1 - 2 * SYNC_ZONE)); }
@@ -42,7 +46,6 @@ function drawEye(ctx: CanvasRenderingContext2D, W: number, H: number, j: { x: nu
   const eyeW = W * 0.82;
   const eyeH = H * 0.46;
 
-  // Eye whites
   ctx.beginPath();
   ctx.ellipse(0, 0, eyeW / 2, eyeH / 2, 0, 0, Math.PI * 2);
   const eyeGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, Math.max(eyeW, eyeH) / 2);
@@ -52,7 +55,6 @@ function drawEye(ctx: CanvasRenderingContext2D, W: number, H: number, j: { x: nu
   ctx.fillStyle = eyeGrad;
   ctx.fill();
 
-  // Iris
   const irisR = eyeH * 0.47;
   ctx.beginPath();
   ctx.arc(0, 0, irisR, 0, Math.PI * 2);
@@ -63,7 +65,6 @@ function drawEye(ctx: CanvasRenderingContext2D, W: number, H: number, j: { x: nu
   ctx.fillStyle = irisGrad;
   ctx.fill();
 
-  // Iris texture lines
   for (let i = 0; i < 22; i++) {
     const angle = (i / 22) * Math.PI * 2;
     ctx.beginPath();
@@ -74,20 +75,17 @@ function drawEye(ctx: CanvasRenderingContext2D, W: number, H: number, j: { x: nu
     ctx.stroke();
   }
 
-  // Pupil
   const pupilR = irisR * 0.47;
   ctx.beginPath();
   ctx.arc(0, 0, pupilR, 0, Math.PI * 2);
   ctx.fillStyle = "#040302";
   ctx.fill();
 
-  // Catch light
   ctx.beginPath();
   ctx.arc(-pupilR * 0.38, -pupilR * 0.38, pupilR * 0.1, 0, Math.PI * 2);
   ctx.fillStyle = "rgba(255,255,255,0.1)";
   ctx.fill();
 
-  // Eyelid shadows
   ctx.save();
   ctx.beginPath();
   ctx.ellipse(0, 0, eyeW / 2, eyeH / 2, 0, 0, Math.PI * 2);
@@ -105,22 +103,6 @@ function drawEye(ctx: CanvasRenderingContext2D, W: number, H: number, j: { x: nu
   ctx.restore();
 }
 
-function buildNoise(ctx: AudioContext) {
-  const len = ctx.sampleRate * 2;
-  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-  const src = ctx.createBufferSource();
-  src.buffer = buf; src.loop = true;
-  const filt = ctx.createBiquadFilter();
-  filt.type = "bandpass"; filt.frequency.value = 2100; filt.Q.value = 0.45;
-  const gain = ctx.createGain();
-  gain.gain.value = 0;
-  src.connect(filt); filt.connect(gain); gain.connect(ctx.destination);
-  src.start();
-  return { gain };
-}
-
 function makeDistortCurve(amount: number): Float32Array<ArrayBuffer> {
   const n = 512, curve = new Float32Array(new ArrayBuffer(n * 4));
   for (let i = 0; i < n; i++) {
@@ -130,13 +112,109 @@ function makeDistortCurve(amount: number): Float32Array<ArrayBuffer> {
   return curve;
 }
 
-// ── Code-generated TV body (SVG, viewBox 0 0 100 100) ──────────────────────
-// Layout:  screen x=10,y=12,w=57,h=50  |  right panel x=72,y=9,w=22,h=56
-//          bottom strip x=7,y=68,w=87,h=14  |  feet y=86
-function TVBodySVG({ visualKnob }: { visualKnob: number }) {
+// ── Audio ──────────────────────────────────────────────────────────────────────
+
+interface AudioChain {
+  noiseGain:  GainNode;
+  noiseFilt:  BiquadFilterNode;
+  noiseSrc:   AudioBufferSourceNode;
+  noiseDistort: WaveShaperNode;
+  humGain:    GainNode;
+  humOsc:     OscillatorNode;
+  ghostGain:  GainNode;
+  ghostOsc:   OscillatorNode;
+}
+
+function buildAudioChain(ctx: AudioContext): AudioChain {
+  // White noise with modulatable bandpass + distortion
+  const len = ctx.sampleRate * 2;
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  const noiseSrc = ctx.createBufferSource();
+  noiseSrc.buffer = buf; noiseSrc.loop = true;
+  const noiseFilt = ctx.createBiquadFilter();
+  noiseFilt.type = "bandpass"; noiseFilt.frequency.value = 2100; noiseFilt.Q.value = 0.5;
+  const noiseDistort = ctx.createWaveShaper();
+  noiseDistort.curve = makeDistortCurve(180); noiseDistort.oversample = "4x";
+  const noiseGain = ctx.createGain(); noiseGain.gain.value = 0;
+  noiseSrc.connect(noiseFilt); noiseFilt.connect(noiseDistort);
+  noiseDistort.connect(noiseGain); noiseGain.connect(ctx.destination);
+  noiseSrc.start();
+
+  // 60 Hz electrical hum (sawtooth, heavily clipped)
+  const humOsc = ctx.createOscillator(); humOsc.type = "sawtooth"; humOsc.frequency.value = 60;
+  const humDist = ctx.createWaveShaper(); humDist.curve = makeDistortCurve(700); humDist.oversample = "4x";
+  const humGain = ctx.createGain(); humGain.gain.value = 0;
+  humOsc.connect(humDist); humDist.connect(humGain); humGain.connect(ctx.destination);
+  humOsc.start();
+
+  // Ghost signal: square-ish 830 Hz narrowband — sounds like a distant broadcast
+  const ghostOsc = ctx.createOscillator(); ghostOsc.type = "square"; ghostOsc.frequency.value = 830;
+  const ghostFilt = ctx.createBiquadFilter();
+  ghostFilt.type = "bandpass"; ghostFilt.frequency.value = 900; ghostFilt.Q.value = 7;
+  const ghostGain = ctx.createGain(); ghostGain.gain.value = 0;
+  ghostOsc.connect(ghostFilt); ghostFilt.connect(ghostGain); ghostGain.connect(ctx.destination);
+  ghostOsc.start();
+
+  return { noiseGain, noiseFilt, noiseSrc, noiseDistort, humGain, humOsc, ghostGain, ghostOsc };
+}
+
+// Called on every knob move during detuned phase
+function updateChannelSound(knob: number, chain: AudioChain, ctx: AudioContext) {
+  const t    = ctx.currentTime;
+  const norm = knob / KNOB_MAX; // 0–1
+
+  // Filter freq: exponential sweep 100 Hz → 5 500 Hz
+  const freq = 100 * Math.pow(55, norm);
+  chain.noiseFilt.frequency.setTargetAtTime(freq, t, 0.04);
+
+  // Q peaks near virtual channel centres → distinct character, troughs = between-channel static
+  const nearness = Math.max(...CH_POS.map(p => Math.exp(-Math.pow(norm - p, 2) / 0.009)));
+  chain.noiseFilt.Q.setTargetAtTime(0.3 + nearness * 3.8, t, 0.06);
+
+  // Distortion: more between channels (inter-channel harshness)
+  chain.noiseDistort.curve = makeDistortCurve(80 + (1 - nearness) * 420);
+
+  // Hum loudest at low knob (bottom of dial)
+  chain.humGain.gain.setTargetAtTime(Math.max(0, (1 - norm * 2.6)) * 0.11, t, 0.07);
+
+  // Ghost peaks at ~second channel position
+  const ghostI = Math.exp(-Math.pow(norm - 0.34, 2) / 0.013);
+  chain.ghostGain.gain.setTargetAtTime(ghostI * 0.075, t, 0.07);
+}
+
+// ── TV Body SVG ────────────────────────────────────────────────────────────────
+// viewBox 0 0 100 100 | screen x=10,y=12,w=57,h=50 | right panel x=72,y=9,w=22,h=57
+function TVBodySVG({
+  visualKnob,
+  lightState,
+  onPowerClick,
+}: {
+  visualKnob: number;
+  lightState: LightState;
+  onPowerClick?: () => void;
+}) {
   const ticks = [-50, -25, 0, 25, 50];
-  // knob center & radii
   const KX = 83, KY = 27, KR = 8, KRO = 9.5;
+
+  const lightColor =
+    lightState === "green" ? "#22cc55" :
+    lightState === "red"   ? "#dd2200" :
+    lightState === "amber" ? "#c87820" :
+    "#0a0806";
+  const lightGlow =
+    lightState === "green" ? "rgba(34,204,85,0.7)" :
+    lightState === "red"   ? "rgba(220,34,0,0.7)"  :
+    lightState === "amber" ? "rgba(200,120,32,0.6)" :
+    "none";
+  const lightAnim = lightState !== "off"
+    ? "lightPulse 1.4s ease-in-out infinite"
+    : undefined;
+
+  const pwrActive = !!onPowerClick;
+  const pwrColor  = pwrActive ? "#5a5248" : "#1e1c18";
+
   return (
     <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"
       style={{ width: "100%", height: "100%", overflow: "visible" }}>
@@ -159,6 +237,12 @@ function TVBodySVG({ visualKnob }: { visualKnob: number }) {
           <stop offset="0%"   stopColor="#3a3834" />
           <stop offset="100%" stopColor="#111009" />
         </radialGradient>
+        {lightState !== "off" && (
+          <radialGradient id="lightglow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stopColor={lightColor} stopOpacity="1" />
+            <stop offset="100%" stopColor={lightColor} stopOpacity="0" />
+          </radialGradient>
+        )}
       </defs>
 
       {/* Drop shadow */}
@@ -166,38 +250,41 @@ function TVBodySVG({ visualKnob }: { visualKnob: number }) {
 
       {/* Chassis */}
       <rect x="4" y="5" width="92" height="84" rx="4" fill="url(#tvbg)" />
-      {/* Outer edge — makes chassis visible against black bg */}
-      <rect x="4" y="5" width="92" height="84" rx="4"
-        fill="none" stroke="#38342a" strokeWidth="0.9" />
+      <rect x="4" y="5" width="92" height="84" rx="4" fill="none" stroke="#38342a" strokeWidth="0.9" />
 
-      {/* Top + left bevel highlights */}
-      <rect x="5"   y="5.5" width="90" height="1.4" rx="0.7" fill="#3e3a30" opacity="0.7" />
-      <rect x="5"   y="5.5" width="1.4" height="82" rx="0.7" fill="#383428" opacity="0.65" />
-      {/* Bottom + right shadow edges */}
-      <rect x="5"   y="87"  width="90" height="1.4" rx="0.7" fill="#000" opacity="0.55" />
+      {/* Bevel highlights */}
+      <rect x="5"    y="5.5" width="90" height="1.4" rx="0.7" fill="#3e3a30" opacity="0.7" />
+      <rect x="5"    y="5.5" width="1.4" height="82" rx="0.7" fill="#383428" opacity="0.65" />
+      <rect x="5"    y="87"  width="90" height="1.4" rx="0.7" fill="#000" opacity="0.55" />
       <rect x="93.6" y="5.5" width="1.4" height="82" rx="0.7" fill="#000" opacity="0.45" />
 
-      {/* ── Screen bezel ── */}
+      {/* Screen bezel */}
       <rect x="7" y="9" width="63" height="57" rx="3" fill="#141210" />
-      {/* Bezel inset shadow (recessed depth) */}
       <rect x="8"  y="10" width="61" height="1.2" fill="#000" opacity="0.95" />
       <rect x="8"  y="10" width="1.2" height="54" fill="#000" opacity="0.85" />
       <rect x="68" y="10" width="1.2" height="54" fill="#282420" opacity="0.5" />
       <rect x="8"  y="65" width="61" height="1.2" fill="#282420" opacity="0.4" />
-      {/* Screen surface (canvas positioned here) */}
       <rect x="10" y="12" width="57" height="50" rx="2" fill="#070504" />
 
-      {/* ── Right control panel ── */}
+      {/* Right control panel */}
       <rect x="72" y="9" width="22" height="57" rx="2" fill="url(#tvpanel)" />
-      {/* Panel inset shadow */}
       <rect x="72" y="9"  width="22" height="1.2" fill="#000" opacity="0.8" />
       <rect x="72" y="9"  width="1.2" height="57" fill="#000" opacity="0.6" />
       <rect x="93" y="9"  width="1.2" height="57" fill="#282420" opacity="0.4" />
 
+      {/* Indicator light */}
+      {lightState !== "off" && (
+        <circle cx="91" cy="14" r="3.5" fill="url(#lightglow)" opacity="0.4" />
+      )}
+      <circle cx="91" cy="14" r="1.6"
+        fill={lightColor}
+        style={{ animation: lightAnim }}
+        filter={lightState !== "off" ? `drop-shadow(0 0 2px ${lightGlow})` : undefined}
+      />
+
       {/* Main tuning knob */}
       <circle cx={KX} cy={KY} r={KRO} fill="#060402" />
       <circle cx={KX} cy={KY} r={KR}  fill="url(#tvkg)" />
-      {/* Rim ticks */}
       {ticks.map((deg) => {
         const rad = ((deg - 90) * Math.PI) / 180;
         return (
@@ -207,7 +294,6 @@ function TVBodySVG({ visualKnob }: { visualKnob: number }) {
             stroke="#2a2824" strokeWidth="0.7" />
         );
       })}
-      {/* Rotating indicator */}
       <g transform={`rotate(${visualKnob} ${KX} ${KY})`}>
         <line x1={KX} y1={KY - KR + 0.5} x2={KX} y2={KY - KR + 4}
           stroke="#b0aea8" strokeWidth="2" strokeLinecap="round" />
@@ -218,20 +304,32 @@ function TVBodySVG({ visualKnob }: { visualKnob: number }) {
       <circle cx={KX} cy="47" r="5.5" fill="url(#tvkg2)" />
       <circle cx={KX} cy="41.8" r="1.1" fill="#484440" />
 
+      {/* Power button */}
+      <g
+        style={{ cursor: pwrActive ? "pointer" : "default", pointerEvents: pwrActive ? "auto" : "none" }}
+        onClick={onPowerClick}
+      >
+        <circle cx="83" cy="61" r="4.2" fill="#0a0806" stroke="#222018" strokeWidth="0.8" />
+        <circle cx="83" cy="61" r="3"   fill="#131110" />
+        {/* Power symbol */}
+        <path d="M81.5 59.7 A2.1 2.1 0 1 1 84.5 59.7"
+          stroke={pwrColor} strokeWidth="0.85" fill="none" strokeLinecap="round" />
+        <line x1="83" y1="58.5" x2="83" y2="60.4"
+          stroke={pwrColor} strokeWidth="0.85" strokeLinecap="round" />
+      </g>
+
       {/* Speaker dot grid */}
       {[0, 1, 2, 3].map(row => [0, 1, 2, 3].map(col => (
         <circle key={`${row}-${col}`}
-          cx={75 + col * 4.2} cy={57 + row * 3.6}
+          cx={75 + col * 4.2} cy={70 + row * 3.2}
           r="0.9" fill="#0e0c0a" />
       )))}
 
-      {/* ── Bottom strip ── */}
+      {/* Bottom strip */}
       <rect x="7" y="68" width="87" height="14" rx="2" fill="#111009" />
-      {/* Vent slots */}
       {Array.from({ length: 9 }, (_, i) => (
         <rect key={i} x={10 + i * 8} y="71" width="4.5" height="1.2" rx="0.6" fill="#0a0806" />
       ))}
-      {/* Nameplate */}
       <rect x="36" y="75" width="24" height="4" rx="1" fill="#0c0a07" />
 
       {/* Feet */}
@@ -241,24 +339,18 @@ function TVBodySVG({ visualKnob }: { visualKnob: number }) {
   );
 }
 
-// ── Trigger silhouette (small TV man) ─────────────────────────────────────
+// ── Trigger silhouette ─────────────────────────────────────────────────────────
 function TriggerTVSVG() {
   return (
     <svg viewBox="0 -14 50 106" xmlns="http://www.w3.org/2000/svg"
       style={{ width: "100%", height: "auto" }}>
-      {/* Antennas */}
       <line x1="20" y1="1"  x2="13" y2="-11" stroke="#131110" strokeWidth="1.6" strokeLinecap="round" />
       <line x1="30" y1="1"  x2="37" y2="-11" stroke="#131110" strokeWidth="1.6" strokeLinecap="round" />
-      {/* Head */}
       <rect x="1" y="1" width="48" height="40" rx="4" fill="#1a1714" />
-      {/* Screen */}
       <rect x="5" y="5" width="32" height="26" rx="2" fill="#060404" />
-      {/* Knob */}
       <circle cx="43" cy="32" r="5"   fill="#0e0c0a" />
       <circle cx="43" cy="32" r="3.5" fill="#1a1816" />
-      {/* Torso */}
       <rect x="18" y="41" width="14" height="18" rx="2" fill="#100f0d" />
-      {/* Legs */}
       <rect x="13" y="59" width="9"  height="30" rx="3" fill="#0d0c0a" />
       <rect x="28" y="59" width="9"  height="30" rx="3" fill="#0d0c0a" />
     </svg>
@@ -276,7 +368,7 @@ function SmokePuff({ left, top, delay }: { left: string; top: string; delay: str
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── Main component ─────────────────────────────────────────────────────────────
 export function TVMan() {
   const [phase,     setPhase]     = useState<Phase>("idle");
   const [knobAngle, setKnobAngle] = useState(135);
@@ -286,16 +378,21 @@ export function TVMan() {
   const proximity = Math.max(0, 1 - dist / SYNC_ZONE);
   const inZone    = dist <= SYNC_ZONE;
 
-  // Audio
-  const ctxRef       = useRef<AudioContext | null>(null);
-  const noiseGainRef = useRef<GainNode | null>(null);
-  const songBufRef   = useRef<AudioBuffer | null>(null);
-  const songSrcRef   = useRef<AudioBufferSourceNode | null>(null);
-  const distortRef   = useRef<WaveShaperNode | null>(null);
-  const songFiltRef  = useRef<BiquadFilterNode | null>(null);
-  const songGainRef  = useRef<GainNode | null>(null);
+  const lightState: LightState =
+    phase === "synced"  ? "green" :
+    phase === "locking" ? "amber" :
+    phase === "booting" ? "red"   : "off";
 
-  const swipeRef = useRef({ active: false, lastX: 0 });
+  // Audio
+  const ctxRef      = useRef<AudioContext | null>(null);
+  const chainRef    = useRef<AudioChain | null>(null);
+  const songBufRef  = useRef<AudioBuffer | null>(null);
+  const songSrcRef  = useRef<AudioBufferSourceNode | null>(null);
+  const distortRef  = useRef<WaveShaperNode | null>(null);
+  const songFiltRef = useRef<BiquadFilterNode | null>(null);
+  const songGainRef = useRef<GainNode | null>(null);
+
+  const swipeRef    = useRef({ active: false, lastX: 0, lastKnob: 135 });
 
   // CRT canvas
   const crtCanvasRef      = useRef<HTMLCanvasElement>(null);
@@ -312,8 +409,11 @@ export function TVMan() {
   const zoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clearIvRef   = useRef<ReturnType<typeof setInterval> | null>(null);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const glitchTRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const clearT = useCallback(() => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  const clearT = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
 
   const startSong = useCallback((decoded: AudioBuffer) => {
     const ctx = ctxRef.current; if (!ctx) return;
@@ -324,40 +424,64 @@ export function TVMan() {
     const gain = ctx.createGain(); gain.gain.value = 0.05;
     src.connect(distort); distort.connect(filt); filt.connect(gain); gain.connect(ctx.destination);
     src.start(0, Math.random() * Math.max(0, decoded.duration - 25));
-    songSrcRef.current = src; distortRef.current = distort; songFiltRef.current = filt; songGainRef.current = gain;
+    songSrcRef.current = src;
+    distortRef.current = distort;
+    songFiltRef.current = filt;
+    songGainRef.current = gain;
   }, []);
 
   const initAudio = useCallback(() => {
     if (ctxRef.current) return;
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
     ctxRef.current = ctx;
-    noiseGainRef.current = buildNoise(ctx).gain;
+    chainRef.current = buildAudioChain(ctx);
   }, []);
 
   const open = useCallback(() => {
-    initAudio(); setPhase("zooming");
+    initAudio();
+    setPhase("zooming");
     const ctx = ctxRef.current;
     if (ctx) {
       const canOpus = document.createElement("audio").canPlayType("audio/webm; codecs=opus") !== "";
       fetch("/api/audio", { headers: { Accept: canOpus ? "audio/webm" : "audio/mpeg" } })
-        .then(r => r.arrayBuffer()).then(buf => ctx.decodeAudioData(buf))
-        .then(decoded => { songBufRef.current = decoded; startSong(decoded); }).catch(() => {});
+        .then(r => r.arrayBuffer())
+        .then(buf => ctx.decodeAudioData(buf))
+        .then(decoded => { songBufRef.current = decoded; startSong(decoded); })
+        .catch(() => {});
     }
     setTimeout(() => setPhase("detuned"), 560);
   }, [initAudio, startSong]);
 
   const close = useCallback(() => {
     clearT();
-    if (zoneTimerRef.current) { clearTimeout(zoneTimerRef.current); zoneTimerRef.current = null; }
-    if (clearIvRef.current)   { clearInterval(clearIvRef.current);  clearIvRef.current = null; }
-    if (syncTimerRef.current) { clearTimeout(syncTimerRef.current); syncTimerRef.current = null; }
+    if (zoneTimerRef.current)  { clearTimeout(zoneTimerRef.current);  zoneTimerRef.current = null; }
+    if (clearIvRef.current)    { clearInterval(clearIvRef.current);   clearIvRef.current   = null; }
+    if (syncTimerRef.current)  { clearTimeout(syncTimerRef.current);  syncTimerRef.current = null; }
+    if (glitchTRef.current)    { clearTimeout(glitchTRef.current);    glitchTRef.current   = null; }
     cancelAnimationFrame(crtRafRef.current);
-    const c = ctxRef.current;
-    if (noiseGainRef.current && c) noiseGainRef.current.gain.setTargetAtTime(0, c.currentTime, 0.1);
-    if (songGainRef.current   && c) songGainRef.current.gain.setTargetAtTime(0, c.currentTime, 0.2);
+    const ctx = ctxRef.current;
+    if (chainRef.current && ctx) {
+      chainRef.current.noiseGain.gain.setTargetAtTime(0, ctx.currentTime, 0.08);
+      chainRef.current.humGain.gain.setTargetAtTime(0, ctx.currentTime, 0.08);
+      chainRef.current.ghostGain.gain.setTargetAtTime(0, ctx.currentTime, 0.08);
+    }
+    if (songGainRef.current && ctx) songGainRef.current.gain.setTargetAtTime(0, ctx.currentTime, 0.2);
     if (songSrcRef.current) { try { songSrcRef.current.stop(); } catch (_) {} songSrcRef.current = null; }
     setPhase("idle");
   }, [clearT]);
+
+  const powerOn = useCallback(() => {
+    if (phase !== "exploded") return;
+    const ctx = ctxRef.current;
+    if (chainRef.current && ctx) {
+      chainRef.current.noiseGain.gain.setTargetAtTime(0.45, ctx.currentTime, 0.1);
+    }
+    if (songBufRef.current) startSong(songBufRef.current);
+    setPhase("booting");
+    setTarget(prev => shiftTarget(prev));
+    clearT();
+    timerRef.current = setTimeout(() => setPhase("detuned"), BOOT_MS);
+  }, [phase, startSong, clearT]);
 
   // Sync phase/proximity refs
   useEffect(() => {
@@ -367,7 +491,7 @@ export function TVMan() {
   }, [phase]);
   useEffect(() => { proximityRef.current = proximity; }, [proximity]);
 
-  // ── Unified CRT canvas RAF ────────────────────────────────────────────────
+  // ── Unified CRT canvas RAF ─────────────────────────────────────────────────
   useEffect(() => {
     const canvas = crtCanvasRef.current; if (!canvas) return;
     const ctx = canvas.getContext("2d"); if (!ctx) return;
@@ -385,23 +509,24 @@ export function TVMan() {
       roundRectPath(ctx, 0, 0, W, H, 5);
       ctx.clip();
 
-      // Dark base
+      // Base
       ctx.fillStyle = "#060504";
       ctx.fillRect(0, 0, W, H);
 
-      // Procedural eye (synced only)
+      // Eye (synced only)
       if (ph === "synced") drawEye(ctx, W, H, jitterRef.current);
 
       // Noise alpha
       let na = 0;
-      if      (ph === "detuned") na = 0.5 * (1 - 0.42 * proximityRef.current);
-      else if (ph === "locking") na = 0.5 * Math.max(0, 1 - (performance.now() - lockPhaseStartRef.current) / LOCK_CLEAR_MS);
-      else if (ph === "jitter")  na = 0.72;
-      else if (ph === "booting") na = 0.48;
+      if      (ph === "detuned")  na = 0.5 * (1 - 0.42 * proximityRef.current);
+      else if (ph === "locking")  na = 0.5 * Math.max(0, 1 - (performance.now() - lockPhaseStartRef.current) / LOCK_CLEAR_MS);
+      else if (ph === "jitter")   na = 0.72;
+      else if (ph === "booting")  na = 0.48;
+      else if (ph === "exploded") na = 0;
 
       if (na > 0.01) {
-        const nId = nCtx.createImageData(32, 28); const d = nId.data;
-        for (let i = 0; i < d.length; i += 4) { const v = (Math.random() * 255) | 0; d[i] = d[i+1] = d[i+2] = v; d[i+3] = 255; }
+        const nId = nCtx.createImageData(32, 28); const nd = nId.data;
+        for (let i = 0; i < nd.length; i += 4) { const v = (Math.random() * 255) | 0; nd[i] = nd[i+1] = nd[i+2] = v; nd[i+3] = 255; }
         nCtx.putImageData(nId, 0, 0);
         ctx.globalAlpha = na; ctx.imageSmoothingEnabled = false;
         ctx.drawImage(nc, 0, 0, W, H);
@@ -419,8 +544,18 @@ export function TVMan() {
 
       // Screen state overlays
       if (ph === "shutoff") {
-        const p = Math.min((performance.now() - shutoffStartRef.current) / SHUTOFF_MS, 1);
-        ctx.fillStyle = `rgba(0,0,0,${0.97 * p})`; ctx.fillRect(0, 0, W, H);
+        const elapsed = performance.now() - shutoffStartRef.current;
+        if (elapsed < FLASH_MS) {
+          // White flash at start
+          const fp = elapsed / FLASH_MS;
+          ctx.fillStyle = `rgba(255,255,255,${1 - fp * 0.15})`;
+          ctx.fillRect(0, 0, W, H);
+        } else {
+          const p = Math.min((elapsed - FLASH_MS) / (SHUTOFF_MS - FLASH_MS), 1);
+          ctx.fillStyle = `rgba(0,0,0,${0.97 * p})`; ctx.fillRect(0, 0, W, H);
+        }
+      } else if (ph === "exploded") {
+        ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
       } else if (ph === "booting") {
         ctx.fillStyle = "rgba(0,0,0,0.64)"; ctx.fillRect(0, 0, W, H);
         const elapsed = performance.now() - bootStartRef.current;
@@ -435,11 +570,20 @@ export function TVMan() {
     return () => cancelAnimationFrame(crtRafRef.current);
   }, []);
 
-  // Noise volume
+  // Noise volume (detuned / locking / jitter / booting)
   useEffect(() => {
-    const g = noiseGainRef.current, c = ctxRef.current; if (!g || !c) return;
-    const vol = phase==="detuned" ? (1-proximity)*0.5 : phase==="locking" ? 0.35 : phase==="jitter" ? 0.6 : phase==="booting" ? 0.45 : 0;
-    g.gain.setTargetAtTime(vol, c.currentTime, 0.07);
+    const chain = chainRef.current, ctx = ctxRef.current; if (!chain || !ctx) return;
+    const vol =
+      phase === "detuned" ? (1 - proximity) * 0.5 :
+      phase === "locking" ? 0.35 :
+      phase === "jitter"  ? 0.6  :
+      phase === "booting" ? 0.45 : 0;
+    chain.noiseGain.gain.setTargetAtTime(vol, ctx.currentTime, 0.07);
+    // Silence hum/ghost if not in detuned
+    if (phase !== "detuned") {
+      chain.humGain.gain.setTargetAtTime(0, ctx.currentTime, 0.1);
+      chain.ghostGain.gain.setTargetAtTime(0, ctx.currentTime, 0.1);
+    }
   }, [proximity, phase]);
 
   // Zone detection → locking
@@ -456,7 +600,7 @@ export function TVMan() {
       const clearStart = performance.now();
       clearIvRef.current = setInterval(() => {
         const p = Math.min((performance.now() - clearStart) / LOCK_CLEAR_MS, 1);
-        if (distortRef.current)  distortRef.current.curve = makeDistortCurve(400 * (1 - p));
+        if (distortRef.current)  distortRef.current.curve  = makeDistortCurve(400 * (1 - p));
         if (songFiltRef.current) { songFiltRef.current.Q.value = 4 - 3.7*p; songFiltRef.current.frequency.value = 1800 + 2200*p; }
         if (songGainRef.current && ctxRef.current) songGainRef.current.gain.setTargetAtTime(0.05 + 0.7*p, ctxRef.current.currentTime, 0.05);
         if (p >= 1) { if (clearIvRef.current) { clearInterval(clearIvRef.current); clearIvRef.current = null; } }
@@ -464,16 +608,19 @@ export function TVMan() {
 
       clearT();
       timerRef.current = setTimeout(() => {
+        // Synced: light residual distortion
+        if (distortRef.current) distortRef.current.curve = makeDistortCurve(22);
         setPhase("synced");
+
         timerRef.current = setTimeout(() => {
           if (songGainRef.current && ctxRef.current) songGainRef.current.gain.setTargetAtTime(0, ctxRef.current.currentTime, 0.4);
           setPhase("jitter");
           timerRef.current = setTimeout(() => {
             setPhase("shutoff");
             timerRef.current = setTimeout(() => {
-              if (songBufRef.current) startSong(songBufRef.current);
-              setPhase("booting"); setTarget(prev => shiftTarget(prev));
-              timerRef.current = setTimeout(() => setPhase("detuned"), BOOT_MS);
+              // Exploded — wait for power button
+              if (songSrcRef.current) { try { songSrcRef.current.stop(); } catch (_) {} songSrcRef.current = null; }
+              setPhase("exploded");
             }, SHUTOFF_MS);
           }, JITTER_MS);
         }, MUSIC_MS);
@@ -484,22 +631,49 @@ export function TVMan() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inZone, phase]);
 
-  // Jitter timer during synced
+  // Synced: jitter + glitch audio bursts
   useEffect(() => {
     if (phase !== "synced") {
       if (syncTimerRef.current) { clearTimeout(syncTimerRef.current); syncTimerRef.current = null; }
+      if (glitchTRef.current)   { clearTimeout(glitchTRef.current);   glitchTRef.current   = null; }
       jitterRef.current = { x: 0, y: 0, r: 0 };
       return;
     }
+
+    // Visual jitter
     const step = () => {
       jitterRef.current = { x: (Math.random()-.5)*4, y: (Math.random()-.5)*4, r: (Math.random()-.5)*0.7 };
       syncTimerRef.current = setTimeout(step, 150 + Math.random() * 350);
     };
     syncTimerRef.current = setTimeout(step, 200);
-    return () => { if (syncTimerRef.current) { clearTimeout(syncTimerRef.current); syncTimerRef.current = null; } };
+
+    // Audio glitch: occasional distortion + playback-rate spike
+    const glitchStep = () => {
+      const ctx = ctxRef.current;
+      if (distortRef.current) distortRef.current.curve = makeDistortCurve(180 + Math.random() * 200);
+      if (songSrcRef.current && ctx) {
+        const rate = 0.88 + Math.random() * 0.28; // slight pitch bend
+        songSrcRef.current.playbackRate.setTargetAtTime(rate, ctx.currentTime, 0.02);
+        songSrcRef.current.playbackRate.setTargetAtTime(1.0,  ctx.currentTime + 0.18, 0.05);
+      }
+      // Return distortion to light residual after 250ms
+      const resetId = setTimeout(() => {
+        if (distortRef.current) distortRef.current.curve = makeDistortCurve(22);
+      }, 250);
+      glitchTRef.current = setTimeout(() => {
+        clearTimeout(resetId);
+        glitchStep();
+      }, 2800 + Math.random() * 5200);
+    };
+    glitchTRef.current = setTimeout(glitchStep, 1200 + Math.random() * 2000);
+
+    return () => {
+      if (syncTimerRef.current) { clearTimeout(syncTimerRef.current); syncTimerRef.current = null; }
+      if (glitchTRef.current)   { clearTimeout(glitchTRef.current);   glitchTRef.current   = null; }
+    };
   }, [phase]);
 
-  // ESC
+  // ESC to close
   useEffect(() => {
     if (phase === "idle") return;
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
@@ -507,23 +681,43 @@ export function TVMan() {
     return () => window.removeEventListener("keydown", h);
   }, [phase, close]);
 
-  // Swipe
+  // Swipe — knob drag
   const onSwipeDown = useCallback((e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest("button")) return;
+    if ((e.target as HTMLElement).closest("[data-power]")) return;
     if (phase !== "detuned") return;
     e.currentTarget.setPointerCapture(e.pointerId);
-    swipeRef.current = { active: true, lastX: e.clientX };
-  }, [phase]);
+    swipeRef.current = { active: true, lastX: e.clientX, lastKnob: knobAngle };
+  }, [phase, knobAngle]);
+
   const onSwipeMove = useCallback((e: React.PointerEvent) => {
     if (!swipeRef.current.active) return;
-    setKnobAngle(p => clampKnob(p + (e.clientX - swipeRef.current.lastX) * 0.7));
+    const delta = e.clientX - swipeRef.current.lastX;
+    const newKnob = clampKnob(knobAngle + delta * 0.7);
+    setKnobAngle(newKnob);
     swipeRef.current.lastX = e.clientX;
-  }, []);
+
+    // Update channel sounds
+    const chain = chainRef.current, ctx = ctxRef.current;
+    if (chain && ctx) {
+      updateChannelSound(newKnob, chain, ctx);
+      // Pitch bend on fast movement
+      const velocity = delta * 0.7; // knob units per event
+      if (Math.abs(velocity) > 3 && chainRef.current) {
+        const rate = 1 + velocity * 0.012;
+        chainRef.current.noiseSrc.playbackRate.setTargetAtTime(
+          Math.max(0.3, Math.min(3.0, rate)), ctx.currentTime, 0.015
+        );
+        chainRef.current.noiseSrc.playbackRate.setTargetAtTime(1.0, ctx.currentTime + 0.12, 0.06);
+      }
+    }
+  }, [knobAngle]);
+
   const onSwipeUp = useCallback(() => { swipeRef.current.active = false; }, []);
 
-  const showOverlay = phase !== "idle" && phase !== "zooming";
-  const showSmoke   = phase === "locking" || phase === "shutoff";
-  const visualKnob  = knobAngle - 135;
+  const showOverlay  = phase !== "idle" && phase !== "zooming";
+  const showSmoke    = phase === "locking" || phase === "shutoff" || phase === "jitter" || phase === "exploded";
+  const visualKnob   = knobAngle - 135;
+  const isExploding  = phase === "jitter" || phase === "shutoff";
 
   return (
     <>
@@ -562,7 +756,7 @@ export function TVMan() {
           onPointerUp={onSwipeUp}
           onPointerCancel={onSwipeUp}
         >
-          {/* Paper grain */}
+          {/* Film grain */}
           <div className="absolute inset-0 pointer-events-none" style={{
             opacity: 0.04,
             backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E\")",
@@ -573,12 +767,18 @@ export function TVMan() {
             <div className="relative pointer-events-none"
               style={{ width: "min(82vw, 82vh)", aspectRatio: "1" }}>
 
-              {/* TV body SVG */}
+              {/* TV body */}
               <div className="absolute inset-0" style={{
-                animation: phase === "jitter" ? "tvJitter 0.09s infinite" : undefined,
+                animation: isExploding
+                  ? "tvExplode 0.11s infinite"
+                  : undefined,
                 filter: "drop-shadow(0 0 45px rgba(10,4,4,0.7))",
               }}>
-                <TVBodySVG visualKnob={visualKnob} />
+                <TVBodySVG
+                  visualKnob={visualKnob}
+                  lightState={lightState}
+                  onPowerClick={phase === "exploded" ? powerOn : undefined}
+                />
               </div>
 
               {/* CRT canvas */}
@@ -591,12 +791,12 @@ export function TVMan() {
                   style={{ display: "block", imageRendering: "pixelated" }} />
               </div>
 
-              {/* Smoke from top vents */}
+              {/* Smoke */}
               {showSmoke && (
                 <>
-                  <SmokePuff left="38%" top="3%" delay="0s"    />
+                  <SmokePuff left="38%" top="3%"   delay="0s"    />
                   <SmokePuff left="52%" top="2.5%" delay="0.35s" />
-                  <SmokePuff left="66%" top="3%" delay="0.7s"  />
+                  <SmokePuff left="66%" top="3%"   delay="0.7s"  />
                 </>
               )}
 
