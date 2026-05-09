@@ -158,20 +158,50 @@ export default function Home() {
               href="https://share.amuse.io/track/mildred-pierce-fractal-agreement"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-fit font-display uppercase tracking-widest transition-opacity hover:opacity-75 active:opacity-55"
-              style={{
-                color: "#e8102a",
-                fontSize: "clamp(1.5rem, 3.5vw, 3rem)",
-                letterSpacing: "0.18em",
-                lineHeight: 1,
-                textShadow: `
-                  0 0 8px rgba(232,16,42,0.9),
-                  0 0 28px rgba(232,16,42,0.55),
-                  0 0 60px rgba(220,10,20,0.3)
-                `,
-              }}
+              className="group w-fit flex flex-col gap-1 select-none"
+              style={{ textDecoration: "none" }}
             >
-              PRE-SAVE
+              {/* Main label */}
+              <div
+                className="flex items-center gap-3 font-display uppercase transition-opacity group-hover:opacity-80 group-active:opacity-55"
+                style={{
+                  color: "#e8102a",
+                  fontSize: "clamp(1.6rem, 3.8vw, 3.4rem)",
+                  letterSpacing: "0.16em",
+                  lineHeight: 1,
+                  textShadow: `
+                    0 0 8px rgba(232,16,42,0.9),
+                    0 0 28px rgba(232,16,42,0.55),
+                    0 0 60px rgba(220,10,20,0.3)
+                  `,
+                }}
+              >
+                {/* Pulsing live dot */}
+                <span style={{
+                  display: "inline-block",
+                  width: "0.55em",
+                  height: "0.55em",
+                  borderRadius: "50%",
+                  backgroundColor: "#e8102a",
+                  flexShrink: 0,
+                  boxShadow: "0 0 6px 2px rgba(232,16,42,0.7)",
+                  animation: "presavePulse 1.2s ease-in-out infinite",
+                }} />
+                PRE-SAVE OUT NOW
+                <span style={{ opacity: 0.7, fontSize: "0.75em" }}>↗</span>
+              </div>
+              {/* Click hint */}
+              <div
+                className="font-display uppercase transition-opacity group-hover:opacity-60"
+                style={{
+                  color: "rgba(232,16,42,0.5)",
+                  fontSize: "clamp(0.55rem, 1vw, 0.75rem)",
+                  letterSpacing: "0.3em",
+                  paddingLeft: "calc(0.55em + 0.75rem)",
+                }}
+              >
+                click here to save · fractal agreement
+              </div>
             </a>
 
             <PreSaveCountdown targetDate={RELEASE_DATE} />

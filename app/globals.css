@@ -85,6 +85,11 @@ body::before {
   100% { transform: translate(0,0);                  filter: brightness(1); }
 }
 
+@keyframes presavePulse {
+  0%, 100% { opacity: 1;   transform: scale(1);    }
+  50%       { opacity: 0.4; transform: scale(0.75); }
+}
+
 /* Film grain — very subtle on silk */
 body::after {
   content: "";
