@@ -16,6 +16,11 @@ const SmokeBackground = dynamic(
   { ssr: false }
 );
 
+const VHSBackground = dynamic(
+  () => import("@/components/ui/vhs-background").then((m) => m.VHSBackground),
+  { ssr: false }
+);
+
 const YOUTUBE_ID    = "wGk5GWPWHzo";
 const SPOTIFY_URL   = "https://open.spotify.com/intl-es/album/52QhMekZYeTTFNOx14Kkla?si=S4ldMHDxSMe-BuIdbfa0lg";
 const YOUTUBE_URL   = "https://youtu.be/wGk5GWPWHzo?si=x5V0kTD6Rg8MN_Qp";
@@ -133,6 +138,14 @@ export default function Home() {
       {/* ── Background ─────────────────────────────────── */}
       <div className="fixed inset-0 z-0" style={{ backgroundColor: "#0a0a0a" }}>
         <SmokeBackground smokeColor="#cc0000" />
+      </div>
+
+      {/* VHS static — barely-visible TV noise between smoke and shader */}
+      <div
+        className="fixed inset-0 z-[2] pointer-events-none"
+        style={{ mixBlendMode: "screen", opacity: 0.11 }}
+      >
+        <VHSBackground className="w-full h-full" />
       </div>
 
       {/* Shader — warm crimson rings, always-on ambient layer */}
