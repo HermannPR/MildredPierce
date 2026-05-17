@@ -227,12 +227,24 @@ export default function Home() {
             </div>
 
             {/* Descriptor */}
-            <div className="pb-1">
+            <div className="pb-1 flex flex-col gap-[2px]">
               <span
                 className="font-display uppercase select-none"
-                style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.6rem", opacity: 0.7 }}
+                style={{ color: IVORY, letterSpacing: "0.18em", fontSize: "0.72rem" }}
               >
-                Debut Single
+                Mildred Pierce
+              </span>
+              <span
+                className="font-display uppercase select-none"
+                style={{ color: PARCHMENT, letterSpacing: "0.20em", fontSize: "0.6rem" }}
+              >
+                Debut Single: Fractal Agreement
+              </span>
+              <span
+                className="font-display uppercase select-none"
+                style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.55rem", opacity: 0.6 }}
+              >
+                Listen in
               </span>
             </div>
 
