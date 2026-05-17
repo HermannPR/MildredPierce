@@ -4,30 +4,53 @@ import { useEffect, useRef } from "react"
 
 const VERT = `attribute vec2 a_pos; void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }`
 
-// Warm crimson/amber concentric rings — biased away from green+blue
+// Julia-set fractal — vivid crimson, always-on
 const FRAG = `
   precision highp float;
   uniform vec2 resolution;
   uniform float time;
+
+  vec2 cmul(vec2 a, vec2 b) { return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x); }
+
   void main(void) {
     vec2 uv = (gl_FragCoord.xy * 2.0 - resolution.xy) / min(resolution.x, resolution.y);
-    float t = time * 0.038;
-    float lw = 0.007;
-    vec3 color = vec3(0.0);
-    for(int j = 0; j < 3; j++){
-      for(int i = 0; i < 8; i++){
-        float v = lw * float(i * i) / abs(
-          fract(t - 0.014 * float(j) + float(i) * 0.016) * 5.0
-          - length(uv)
-          + mod(uv.x + uv.y, 0.22)
-        );
-        color[j] += v;
+    float t = time * 0.022;
+
+    // Slowly orbiting Julia constant
+    vec2 c = vec2(
+      -0.7 + 0.18 * cos(t * 0.7),
+       0.27 + 0.12 * sin(t * 0.53)
+    );
+
+    vec2 z = uv * 1.4;
+    float escaped = 0.0;
+    float smooth_i = 0.0;
+    for (int i = 0; i < 80; i++) {
+      z = cmul(z, z) + c;
+      if (dot(z, z) > 16.0) {
+        escaped = 1.0;
+        // smooth colouring
+        smooth_i = float(i) - log2(log2(dot(z,z))) + 4.0;
+        break;
       }
     }
-    // Suppress green and blue heavily for warm red/amber output
-    color[1] *= 0.32;
-    color[2] *= 0.08;
-    gl_FragColor = vec4(color[0], color[1], color[2], 1.0);
+
+    if (escaped < 0.5) {
+      gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+      return;
+    }
+
+    float n = smooth_i / 80.0;
+
+    // Vivid crimson palette — pulse with time
+    float pulse = 0.5 + 0.5 * sin(t * 2.1 + n * 12.0);
+    float r = 0.9 + 0.1 * pulse;
+    float g = 0.04 + 0.08 * n * pulse;
+    float b = 0.02 + 0.04 * n;
+
+    // Brightness ramp
+    float bright = pow(n, 0.45) * 1.6;
+    gl_FragColor = vec4(r * bright, g * bright, b * bright, 1.0);
   }
 `
 

@@ -15,8 +15,7 @@
 html, body {
   height: 100%;
   overflow: hidden;
-  /* Silk red base — area outside EtheralShadow mask */
-  background-color: #080002;
+  background-color: #0d0002;
 }
 
 /* Persistent subtle scanlines after CRT intro fades */
@@ -34,11 +33,6 @@ body::before {
   );
 }
 
-
-@keyframes presavePulse {
-  0%, 100% { opacity: 1;   transform: scale(1);    }
-  50%       { opacity: 0.4; transform: scale(0.75); }
-}
 
 /* Film grain — very subtle on silk */
 body::after {

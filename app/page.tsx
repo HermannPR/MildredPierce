@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useState, useCallback, useEffect } from "react";
 import { Instagram, Youtube } from "lucide-react";
@@ -136,22 +137,22 @@ export default function Home() {
     <main className="relative w-full h-screen overflow-hidden">
 
       {/* ── Background ─────────────────────────────────── */}
-      <div className="fixed inset-0 z-0" style={{ backgroundColor: "#0a0a0a" }}>
-        <SmokeBackground smokeColor="#cc0000" />
+      <div className="fixed inset-0 z-0" style={{ backgroundColor: "#0d0002" }}>
+        <SmokeBackground smokeColor="#dd0000" />
       </div>
 
-      {/* VHS static — barely-visible TV noise between smoke and shader */}
+      {/* VHS static */}
       <div
         className="fixed inset-0 z-[2] pointer-events-none"
-        style={{ mixBlendMode: "screen", opacity: 0.11 }}
+        style={{ mixBlendMode: "screen", opacity: 0.28 }}
       >
         <VHSBackground className="w-full h-full" />
       </div>
 
-      {/* Shader — warm crimson rings, always-on ambient layer */}
+      {/* Fractal rings — vivid crimson ambient layer */}
       <div
         className="fixed inset-0 z-[4] pointer-events-none"
-        style={{ mixBlendMode: "screen", opacity: 0.18 }}
+        style={{ mixBlendMode: "screen", opacity: 0.42 }}
       >
         <ShaderAnimation className="w-full h-full" />
       </div>
@@ -211,8 +212,19 @@ export default function Home() {
           {/* ── Streaming platforms ── */}
           <div className="flex flex-col">
 
-            {/* Descriptor */}
-            <div className="pt-3 pb-1">
+            {/* Band photo + descriptor */}
+            <div className="pt-3 pb-1 flex items-center gap-3">
+              <div style={{
+                position: "relative",
+                width: 48, height: 48,
+                borderRadius: "50%",
+                overflow: "hidden",
+                flexShrink: 0,
+                border: "1px solid rgba(245,237,213,0.28)",
+                boxShadow: "0 0 12px rgba(200,16,42,0.22)",
+              }}>
+                <Image src="/BandImage.jpeg" alt="Mildred Pierce" fill style={{ objectFit: "cover" }} />
+              </div>
               <span
                 className="font-display uppercase select-none"
                 style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.6rem", opacity: 0.7 }}

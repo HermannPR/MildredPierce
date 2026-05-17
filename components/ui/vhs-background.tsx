@@ -55,15 +55,15 @@ const FRAG = `
     f += glitch * 0.35;
 
     // Warm color mapping: full red, suppress green/blue
-    float r_ch = f * f * f + 0.55 * f * f + 0.45 * f;
-    float g_ch = r_ch * 0.30;
-    float b_ch = r_ch * 0.07;
+    float r_ch = f * f * f + 0.65 * f * f + 0.55 * f;
+    float g_ch = r_ch * 0.22;
+    float b_ch = r_ch * 0.05;
 
     // Film grain
-    float grain = random(uv + time * 0.07) * 0.09;
+    float grain = random(uv + time * 0.07) * 0.15;
     r_ch += grain;
-    g_ch += grain * 0.25;
-    b_ch += grain * 0.04;
+    g_ch += grain * 0.18;
+    b_ch += grain * 0.03;
 
     // Horizontal scanlines
     float scan = sin(uv.y * 520.0) * 0.025;
@@ -139,7 +139,7 @@ export function VHSBackground({ className }: VHSBackgroundProps) {
     let t = 0
     const loop = () => {
       animIdRef.current = requestAnimationFrame(loop)
-      t += 0.04
+      t += 0.055
       gl.uniform1f(uTime, t)
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
     }
