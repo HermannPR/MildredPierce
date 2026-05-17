@@ -69,7 +69,7 @@ function PlatformLink({
 }) {
   const inner = (
     <div
-      className="flex items-center justify-between py-[0.65rem]"
+      className="flex items-center justify-between min-h-[44px] py-[0.5rem]"
       style={{ opacity: disabled ? 0.28 : 1 }}
     >
       <div className="flex items-center gap-3" style={{ color: iconColor }}>
@@ -83,7 +83,7 @@ function PlatformLink({
       </div>
       <span
         className="font-display uppercase"
-        style={{ color: PARCHMENT, letterSpacing: "0.18em", fontSize: "0.55rem" }}
+        style={{ color: PARCHMENT, letterSpacing: "0.18em", fontSize: "0.65rem" }}
       >
         {disabled ? "Soon" : "↗"}
       </span>
@@ -152,7 +152,7 @@ export default function Home() {
       {/* Fractal rings — vivid crimson ambient layer */}
       <div
         className="fixed inset-0 z-[4] pointer-events-none"
-        style={{ mixBlendMode: "screen", opacity: 0.42 }}
+        style={{ mixBlendMode: "screen", opacity: 0.28 }}
       >
         <ShaderAnimation className="w-full h-full" />
       </div>
@@ -161,7 +161,7 @@ export default function Home() {
       <div className="relative z-20 flex flex-col md:flex-row w-full md:h-full">
 
         {/* ── Video — bottom on mobile, right on desktop ── */}
-        <section className="
+        <section id="music-video" className="
           order-2 md:order-2
           w-full md:w-[42%] lg:w-[46%]
           flex-shrink-0 relative
@@ -169,14 +169,22 @@ export default function Home() {
           overflow-hidden
           h-[56vw] md:h-full
         ">
-          <div style={{ width: "100%", aspectRatio: "16/9" }}>
-            <iframe
-              src={`https://www.youtube.com/embed/${YOUTUBE_ID}?rel=0&modestbranding=1&color=white`}
-              style={{ width: "100%", height: "100%", border: "none", display: "block" }}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              title="Fractal Agreement — Mildred Pierce"
-            />
+          <div className="w-full">
+            <div
+              className="hidden md:block text-center mb-2"
+              style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.58rem", opacity: 0.5, fontFamily: "var(--font-display)", textTransform: "uppercase" }}
+            >
+              Music Video
+            </div>
+            <div style={{ width: "100%", aspectRatio: "16/9" }}>
+              <iframe
+                src={`https://www.youtube.com/embed/${YOUTUBE_ID}?rel=0&modestbranding=1&color=white`}
+                style={{ width: "100%", height: "100%", border: "none", display: "block" }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                title="Fractal Agreement — Mildred Pierce"
+              />
+            </div>
           </div>
         </section>
 
@@ -194,7 +202,7 @@ export default function Home() {
           <div className="mb-3 md:mb-8" style={{ height: 1, background: RULE }} />
 
           {/* Title */}
-          <div className="relative" style={{ height: "clamp(72px, 15vw, 210px)" }}>
+          <div className="relative" style={{ height: "clamp(100px, 18vw, 210px)" }}>
             <HoverMorphText
               from="MILDRED PIERCE"
               to="FRACTAL AGREEMENT"
@@ -202,7 +210,7 @@ export default function Home() {
               color={IVORY}
               fontSize={TITLE_SIZE}
               className="absolute inset-0"
-              textClassName="font-display leading-none tracking-wide"
+              textClassName="font-display leading-tight tracking-wide w-full"
             />
           </div>
 
@@ -240,7 +248,7 @@ export default function Home() {
                 </span>
                 <span
                   className="font-display uppercase select-none"
-                  style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.52rem", opacity: 0.55 }}
+                  style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.65rem", opacity: 0.55 }}
                 >
                   Listen in
                 </span>
@@ -272,12 +280,23 @@ export default function Home() {
             <div style={{ height: 1, background: RULE }} />
           </div>
 
+          {/* Watch CTA — mobile only */}
+          <a
+            href="#music-video"
+            onClick={(e) => { e.preventDefault(); document.getElementById("music-video")?.scrollIntoView({ behavior: "smooth" }); }}
+            className="md:hidden flex items-center gap-2 w-fit font-display uppercase transition-opacity hover:opacity-70 mt-3 min-h-[44px]"
+            style={{ color: PARCHMENT, letterSpacing: "0.20em", fontSize: "0.65rem", opacity: 0.75 }}
+          >
+            <span style={{ fontSize: "0.75rem" }}>▶</span>
+            Watch Music Video
+          </a>
+
           {/* Instagram */}
           <a
             href={INSTAGRAM_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 w-fit font-display uppercase transition-opacity hover:opacity-70 mt-4"
+            className="flex items-center gap-2 w-fit font-display uppercase transition-opacity hover:opacity-70 mt-3 min-h-[44px]"
             style={{ color: "#E1306C", letterSpacing: "0.22em", fontSize: "0.72rem" }}
           >
             <Instagram size={13} strokeWidth={1.5} />

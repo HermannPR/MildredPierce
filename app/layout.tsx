@@ -11,12 +11,12 @@ const displayFont = localFont({
 const BASE_URL = "https://mildred-pierce.vercel.app";
 
 export const metadata: Metadata = {
-  title: "Mildred Pierce",
-  description: "Fractal Agreement — Coming Soon",
+  title: "Mildred Pierce — Fractal Agreement",
+  description: "Debut single out now. Listen on Spotify and YouTube.",
   metadataBase: new URL(BASE_URL),
   openGraph: {
     title: "Mildred Pierce — Fractal Agreement",
-    description: "Pre-save now. Out May 15.",
+    description: "Debut single out now. Listen on Spotify and YouTube.",
     url: BASE_URL,
     siteName: "Mildred Pierce",
     images: [
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Mildred Pierce — Fractal Agreement",
-    description: "Pre-save now. Out May 15.",
+    description: "Debut single out now. Listen on Spotify and YouTube.",
     images: ["/og-image.jpg"],
   },
 };
