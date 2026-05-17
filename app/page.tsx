@@ -31,7 +31,7 @@ const IVORY     = "#F5EDD5";
 const PARCHMENT = "#C8B090";
 const RULE      = "rgba(245,237,213,0.22)";
 
-const TITLE_SIZE   = "clamp(2.6rem, 6.8vw, 6.2rem)";
+const TITLE_SIZE   = "clamp(2.1rem, 6.8vw, 6.2rem)";
 const HOLD_MILDRED = 3000;
 const HOLD_FRACTAL = 5000;
 const MORPH_MS     = 1300;
@@ -134,7 +134,7 @@ export default function Home() {
   }, [crtDone]);
 
   return (
-    <main className="relative w-full h-screen overflow-hidden">
+    <main className="relative w-full min-h-screen overflow-x-hidden md:h-screen md:overflow-hidden">
 
       {/* ── Background ─────────────────────────────────── */}
       <div className="fixed inset-0 z-0" style={{ backgroundColor: "#0d0002" }}>
@@ -158,11 +158,11 @@ export default function Home() {
       </div>
 
       {/* ── Content ────────────────────────────────────── */}
-      <div className="relative z-20 flex flex-col md:flex-row w-full h-full">
+      <div className="relative z-20 flex flex-col md:flex-row w-full md:h-full">
 
-        {/* ── Video — top on mobile, right on desktop ── */}
+        {/* ── Video — bottom on mobile, right on desktop ── */}
         <section className="
-          order-1 md:order-2
+          order-2 md:order-2
           w-full md:w-[42%] lg:w-[46%]
           flex-shrink-0 relative
           flex items-center justify-center
@@ -180,21 +180,21 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── Editorial content — bottom on mobile, left on desktop ── */}
+        {/* ── Editorial content — top on mobile, left on desktop ── */}
         <section className="
-          order-2 md:order-1
+          order-1 md:order-1
           flex flex-col justify-center flex-1
           px-6 md:px-10 lg:px-16
-          py-3 md:py-0
-          gap-0 overflow-hidden
+          pt-6 pb-4 md:py-0
+          gap-0
           relative z-10 md:z-auto
         ">
 
           {/* Top rule */}
-          <div className="mb-5 md:mb-8" style={{ height: 1, background: RULE }} />
+          <div className="mb-3 md:mb-8" style={{ height: 1, background: RULE }} />
 
           {/* Title */}
-          <div className="relative" style={{ height: "clamp(105px, 15vw, 210px)" }}>
+          <div className="relative" style={{ height: "clamp(72px, 15vw, 210px)" }}>
             <HoverMorphText
               from="MILDRED PIERCE"
               to="FRACTAL AGREEMENT"
@@ -207,45 +207,44 @@ export default function Home() {
           </div>
 
           {/* Bottom rule */}
-          <div className="mt-5 md:mt-8" style={{ height: 1, background: RULE }} />
+          <div className="mt-3 md:mt-8" style={{ height: 1, background: RULE }} />
 
           {/* ── Streaming platforms ── */}
           <div className="flex flex-col">
 
-            {/* Band photo */}
-            <div className="pt-4 pb-2">
+            {/* Band photo + descriptor row */}
+            <div className="flex items-center gap-4 pt-4 pb-2">
               <div style={{
                 position: "relative",
-                width: 80, height: 80,
+                width: 64, height: 64,
                 borderRadius: "50%",
                 overflow: "hidden",
+                flexShrink: 0,
                 border: "1.5px solid rgba(245,237,213,0.30)",
-                boxShadow: "0 0 18px rgba(200,16,42,0.30)",
+                boxShadow: "0 0 16px rgba(200,16,42,0.30)",
               }}>
                 <Image src="/BandImage.jpeg" alt="Mildred Pierce" fill style={{ objectFit: "cover" }} />
               </div>
-            </div>
-
-            {/* Descriptor */}
-            <div className="pb-1 flex flex-col gap-[2px]">
-              <span
-                className="font-display uppercase select-none"
-                style={{ color: IVORY, letterSpacing: "0.18em", fontSize: "0.72rem" }}
-              >
-                Mildred Pierce
-              </span>
-              <span
-                className="font-display uppercase select-none"
-                style={{ color: PARCHMENT, letterSpacing: "0.20em", fontSize: "0.6rem" }}
-              >
-                Debut Single: Fractal Agreement
-              </span>
-              <span
-                className="font-display uppercase select-none"
-                style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.55rem", opacity: 0.6 }}
-              >
-                Listen in
-              </span>
+              <div className="flex flex-col gap-[3px]">
+                <span
+                  className="font-display uppercase select-none"
+                  style={{ color: IVORY, letterSpacing: "0.18em", fontSize: "0.72rem" }}
+                >
+                  Mildred Pierce
+                </span>
+                <span
+                  className="font-display uppercase select-none"
+                  style={{ color: PARCHMENT, letterSpacing: "0.18em", fontSize: "0.58rem" }}
+                >
+                  Debut Single: Fractal Agreement
+                </span>
+                <span
+                  className="font-display uppercase select-none"
+                  style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.52rem", opacity: 0.55 }}
+                >
+                  Listen in
+                </span>
+              </div>
             </div>
 
             <PlatformLink

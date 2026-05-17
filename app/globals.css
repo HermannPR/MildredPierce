@@ -18,6 +18,15 @@ html, body {
   background-color: #0d0002;
 }
 
+@media (max-width: 767px) {
+  html, body {
+    height: auto;
+    min-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+}
+
 /* Persistent subtle scanlines after CRT intro fades */
 body::before {
   content: "";
