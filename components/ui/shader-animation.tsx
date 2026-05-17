@@ -4,45 +4,40 @@ import { useEffect, useRef } from "react"
 
 const VERT = `attribute vec2 a_pos; void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }`
 
+// Warm crimson/amber concentric rings — biased away from green+blue
 const FRAG = `
   precision highp float;
   uniform vec2 resolution;
   uniform float time;
   void main(void) {
     vec2 uv = (gl_FragCoord.xy * 2.0 - resolution.xy) / min(resolution.x, resolution.y);
-    float t = time * 0.05;
-    float lineWidth = 0.002;
+    float t = time * 0.038;
+    float lw = 0.007;
     vec3 color = vec3(0.0);
     for(int j = 0; j < 3; j++){
-      for(int i = 0; i < 5; i++){
-        color[j] += lineWidth * float(i*i) / abs(fract(t - 0.01*float(j) + float(i)*0.01)*5.0 - length(uv) + mod(uv.x+uv.y, 0.2));
+      for(int i = 0; i < 8; i++){
+        float v = lw * float(i * i) / abs(
+          fract(t - 0.014 * float(j) + float(i) * 0.016) * 5.0
+          - length(uv)
+          + mod(uv.x + uv.y, 0.22)
+        );
+        color[j] += v;
       }
     }
+    // Suppress green and blue heavily for warm red/amber output
+    color[1] *= 0.32;
+    color[2] *= 0.08;
     gl_FragColor = vec4(color[0], color[1], color[2], 1.0);
   }
 `
 
 interface ShaderAnimationProps {
   className?: string
-  paused?: boolean
 }
 
-export function ShaderAnimation({ className, paused = false }: ShaderAnimationProps) {
-  const canvasRef  = useRef<HTMLCanvasElement>(null)
-  const animIdRef  = useRef(0)
-  const pausedRef  = useRef(paused)
-  const startLoopRef = useRef<(() => void) | null>(null)
-
-  // Keep pausedRef in sync and start/stop the RAF loop accordingly
-  useEffect(() => {
-    pausedRef.current = paused
-    if (paused) {
-      cancelAnimationFrame(animIdRef.current)
-      animIdRef.current = 0
-    } else if (animIdRef.current === 0 && startLoopRef.current) {
-      startLoopRef.current()
-    }
-  }, [paused])
+export function ShaderAnimation({ className }: ShaderAnimationProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const animIdRef = useRef(0)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -98,15 +93,10 @@ export function ShaderAnimation({ className, paused = false }: ShaderAnimationPr
       gl.uniform1f(uTime, t)
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
     }
-
-    startLoopRef.current = loop
-
-    if (!pausedRef.current) loop()
+    loop()
 
     return () => {
       cancelAnimationFrame(animIdRef.current)
-      animIdRef.current = 0
-      startLoopRef.current = null
       window.removeEventListener("resize", resize)
       if (buf) gl.deleteBuffer(buf)
       gl.deleteShader(vs)
