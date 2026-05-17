@@ -64,7 +64,7 @@ class Renderer {
   }
 
   updateScale() {
-    const dpr = Math.max(1, window.devicePixelRatio);
+    const dpr = Math.min(1.5, Math.max(1, window.devicePixelRatio));
     const { innerWidth: width, innerHeight: height } = window;
     this.canvas.width = width * dpr;
     this.canvas.height = height * dpr;

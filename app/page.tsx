@@ -81,7 +81,7 @@ export default function Home() {
 
       {/* ── Background ─────────────────────────────────── */}
       <div className="fixed inset-0 z-0" style={{ backgroundColor: "#0a0a0a" }}>
-        <SmokeBackground smokeColor="#8B0000" />
+        <SmokeBackground smokeColor="#cc0000" />
       </div>
 
       {/* Shader — pulses on FRACTAL AGREEMENT state */}
@@ -93,7 +93,7 @@ export default function Home() {
           transition: "opacity 0.6s ease",
         }}
       >
-        <ShaderAnimation className="w-full h-full" />
+        <ShaderAnimation className="w-full h-full" paused={!shaderVisible} />
       </div>
 
       {/* ── Content ────────────────────────────────────── */}
@@ -132,6 +132,7 @@ export default function Home() {
           px-6 md:px-10 lg:px-16
           py-3 md:py-0
           gap-0 overflow-hidden
+          relative z-10 md:z-auto
         ">
 
           {/* Top rule */}

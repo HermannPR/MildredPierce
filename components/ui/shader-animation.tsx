@@ -24,10 +24,25 @@ const FRAG = `
 
 interface ShaderAnimationProps {
   className?: string
+  paused?: boolean
 }
 
-export function ShaderAnimation({ className }: ShaderAnimationProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+export function ShaderAnimation({ className, paused = false }: ShaderAnimationProps) {
+  const canvasRef  = useRef<HTMLCanvasElement>(null)
+  const animIdRef  = useRef(0)
+  const pausedRef  = useRef(paused)
+  const startLoopRef = useRef<(() => void) | null>(null)
+
+  // Keep pausedRef in sync and start/stop the RAF loop accordingly
+  useEffect(() => {
+    pausedRef.current = paused
+    if (paused) {
+      cancelAnimationFrame(animIdRef.current)
+      animIdRef.current = 0
+    } else if (animIdRef.current === 0 && startLoopRef.current) {
+      startLoopRef.current()
+    }
+  }, [paused])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -76,18 +91,22 @@ export function ShaderAnimation({ className }: ShaderAnimationProps) {
     resize()
     window.addEventListener("resize", resize)
 
-    let animId: number
     let t = 0
-    const render = () => {
-      animId = requestAnimationFrame(render)
+    const loop = () => {
+      animIdRef.current = requestAnimationFrame(loop)
       t += 0.05
       gl.uniform1f(uTime, t)
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
     }
-    render()
+
+    startLoopRef.current = loop
+
+    if (!pausedRef.current) loop()
 
     return () => {
-      cancelAnimationFrame(animId)
+      cancelAnimationFrame(animIdRef.current)
+      animIdRef.current = 0
+      startLoopRef.current = null
       window.removeEventListener("resize", resize)
       if (buf) gl.deleteBuffer(buf)
       gl.deleteShader(vs)
