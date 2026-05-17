@@ -50,10 +50,6 @@ const FRAG = `
                   fbm(st + 4.0 * q + vec2(8.3 - t * 0.126, 2.8)));
     float f = fbm(st + r);
 
-    // Occasional glitch horizontal bars
-    float glitch = step(0.985, random(vec2(floor(time * 12.0), floor(uv.y * 60.0))));
-    f += glitch * 0.35;
-
     // Warm color mapping: full red, suppress green/blue
     float r_ch = f * f * f + 0.65 * f * f + 0.55 * f;
     float g_ch = r_ch * 0.22;
