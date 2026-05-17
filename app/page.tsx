@@ -6,6 +6,11 @@ import { Instagram } from "lucide-react";
 import { HoverMorphText } from "@/components/ui/hover-morph-text";
 import { CRTIntro } from "@/components/ui/crt-intro";
 
+const SplineScene = dynamic(
+  () => import("@/components/ui/splite").then((m) => m.SplineScene),
+  { ssr: false }
+);
+
 const ShaderAnimation = dynamic(
   () => import("@/components/ui/shader-animation").then((m) => m.ShaderAnimation),
   { ssr: false }
@@ -16,6 +21,7 @@ const SmokeBackground = dynamic(
   { ssr: false }
 );
 
+const SPLINE_SCENE  = "https://prod.spline.design/Dor5qQbQC8MafFxN/scene.splinecode";
 const YOUTUBE_ID    = "wGk5GWPWHzo";
 const SPOTIFY_URL   = "https://open.spotify.com/intl-es/album/52QhMekZYeTTFNOx14Kkla?si=S4ldMHDxSMe-BuIdbfa0lg";
 const YOUTUBE_URL   = "https://youtu.be/wGk5GWPWHzo?si=x5V0kTD6Rg8MN_Qp";
@@ -93,7 +99,7 @@ export default function Home() {
       {/* ── Content ────────────────────────────────────── */}
       <div className="relative z-20 flex flex-col md:flex-row w-full h-full">
 
-        {/* ── Video — top on mobile, right on desktop ── */}
+        {/* ── Right panel: Spline decoration + YouTube embed ── */}
         <section className="
           order-1 md:order-2
           w-full md:w-[42%] lg:w-[46%]
@@ -102,7 +108,13 @@ export default function Home() {
           overflow-hidden
           h-[56vw] md:h-full
         ">
-          <div style={{ width: "100%", aspectRatio: "16/9" }}>
+          {/* Spline — decorative layer, pointer-events off so embed stays clickable */}
+          <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
+            <SplineScene scene={SPLINE_SCENE} className="w-full h-full" />
+          </div>
+
+          {/* YouTube embed on top */}
+          <div className="relative" style={{ zIndex: 2, width: "88%", aspectRatio: "16/9" }}>
             <iframe
               src={`https://www.youtube.com/embed/${YOUTUBE_ID}?rel=0&modestbranding=1&color=white`}
               style={{ width: "100%", height: "100%", border: "none", display: "block" }}
