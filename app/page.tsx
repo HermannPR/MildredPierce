@@ -212,19 +212,22 @@ export default function Home() {
           {/* ── Streaming platforms ── */}
           <div className="flex flex-col">
 
-            {/* Band photo + descriptor */}
-            <div className="pt-3 pb-1 flex items-center gap-3">
+            {/* Band photo */}
+            <div className="pt-4 pb-2">
               <div style={{
                 position: "relative",
-                width: 48, height: 48,
+                width: 80, height: 80,
                 borderRadius: "50%",
                 overflow: "hidden",
-                flexShrink: 0,
-                border: "1px solid rgba(245,237,213,0.28)",
-                boxShadow: "0 0 12px rgba(200,16,42,0.22)",
+                border: "1.5px solid rgba(245,237,213,0.30)",
+                boxShadow: "0 0 18px rgba(200,16,42,0.30)",
               }}>
                 <Image src="/BandImage.jpeg" alt="Mildred Pierce" fill style={{ objectFit: "cover" }} />
               </div>
+            </div>
+
+            {/* Descriptor */}
+            <div className="pb-1">
               <span
                 className="font-display uppercase select-none"
                 style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.6rem", opacity: 0.7 }}
