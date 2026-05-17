@@ -6,6 +6,7 @@ import { useState, useCallback, useEffect } from "react";
 import { Instagram, Youtube } from "lucide-react";
 import { HoverMorphText } from "@/components/ui/hover-morph-text";
 import { CRTIntro } from "@/components/ui/crt-intro";
+import { GlassButton } from "@/components/ui/apple-tahoe-liquid-glass-button";
 
 const ShaderAnimation = dynamic(
   () => import("@/components/ui/shader-animation").then((m) => m.ShaderAnimation),
@@ -67,40 +68,32 @@ function PlatformLink({
   iconColor: string;
   disabled?: boolean;
 }) {
-  const inner = (
-    <div
-      className="flex items-center justify-between min-h-[44px] py-[0.5rem]"
-      style={{ opacity: disabled ? 0.28 : 1 }}
+  return (
+    <GlassButton
+      className="w-full rounded-xl px-4 py-0"
+      size="sm"
+      disabled={disabled}
+      glassColor={disabled ? "rgba(245,237,213,0.03)" : `${iconColor}18`}
+      onClick={() => { if (href && !disabled) window.open(href, "_blank", "noopener,noreferrer"); }}
     >
-      <div className="flex items-center gap-3" style={{ color: iconColor }}>
-        {icon}
+      <div className="flex items-center justify-between w-full min-h-[44px]">
+        <div className="flex items-center gap-3" style={{ color: iconColor }}>
+          {icon}
+          <span
+            className="font-display uppercase"
+            style={{ color: IVORY, letterSpacing: "0.22em", fontSize: "0.72rem" }}
+          >
+            {label}
+          </span>
+        </div>
         <span
           className="font-display uppercase"
-          style={{ color: IVORY, letterSpacing: "0.22em", fontSize: "0.72rem" }}
+          style={{ color: PARCHMENT, letterSpacing: "0.18em", fontSize: "0.65rem" }}
         >
-          {label}
+          {disabled ? "Soon" : "↗"}
         </span>
       </div>
-      <span
-        className="font-display uppercase"
-        style={{ color: PARCHMENT, letterSpacing: "0.18em", fontSize: "0.65rem" }}
-      >
-        {disabled ? "Soon" : "↗"}
-      </span>
-    </div>
-  );
-
-  if (disabled || !href) return <div className="select-none cursor-default">{inner}</div>;
-
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block transition-opacity hover:opacity-70"
-    >
-      {inner}
-    </a>
+    </GlassButton>
   );
 }
 
@@ -255,53 +248,52 @@ export default function Home() {
               </div>
             </div>
 
-            <PlatformLink
-              href={SPOTIFY_URL}
-              icon={<SpotifyIcon />}
-              label="Spotify"
-              iconColor="#1DB954"
-            />
-            <div style={{ height: 1, background: RULE }} />
-
-            <PlatformLink
-              href={YOUTUBE_URL}
-              icon={<Youtube size={13} strokeWidth={0} fill="currentColor" />}
-              label="YouTube"
-              iconColor="#FF0000"
-            />
-            <div style={{ height: 1, background: RULE }} />
-
-            <PlatformLink
-              icon={<AppleMusicIcon />}
-              label="Apple Music"
-              iconColor="#FC3C44"
-              disabled
-            />
-            <div style={{ height: 1, background: RULE }} />
+            <div className="flex flex-col gap-2 pb-1">
+              <PlatformLink
+                href={SPOTIFY_URL}
+                icon={<SpotifyIcon />}
+                label="Spotify"
+                iconColor="#1DB954"
+              />
+              <PlatformLink
+                href={YOUTUBE_URL}
+                icon={<Youtube size={13} strokeWidth={0} fill="currentColor" />}
+                label="YouTube"
+                iconColor="#FF0000"
+              />
+              <PlatformLink
+                icon={<AppleMusicIcon />}
+                label="Apple Music"
+                iconColor="#FC3C44"
+                disabled
+              />
+            </div>
           </div>
 
           {/* Watch CTA — mobile only */}
-          <a
-            href="#music-video"
-            onClick={(e) => { e.preventDefault(); document.getElementById("music-video")?.scrollIntoView({ behavior: "smooth" }); }}
-            className="md:hidden flex items-center gap-2 w-fit font-display uppercase transition-opacity hover:opacity-70 mt-3 min-h-[44px]"
-            style={{ color: PARCHMENT, letterSpacing: "0.20em", fontSize: "0.65rem", opacity: 0.75 }}
+          <GlassButton
+            className="md:hidden self-start mt-3"
+            size="sm"
+            onClick={() => document.getElementById("music-video")?.scrollIntoView({ behavior: "smooth" })}
           >
             <span style={{ fontSize: "0.75rem" }}>▶</span>
-            Watch Music Video
-          </a>
+            <span className="font-display uppercase" style={{ letterSpacing: "0.20em", fontSize: "0.65rem" }}>
+              Watch Music Video
+            </span>
+          </GlassButton>
 
           {/* Instagram */}
-          <a
-            href={INSTAGRAM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 w-fit font-display uppercase transition-opacity hover:opacity-70 mt-3 min-h-[44px]"
-            style={{ color: "#E1306C", letterSpacing: "0.22em", fontSize: "0.72rem" }}
+          <GlassButton
+            className="self-start mt-3"
+            size="sm"
+            glassColor="rgba(225,48,108,0.12)"
+            onClick={() => window.open(INSTAGRAM_URL, "_blank", "noopener,noreferrer")}
           >
-            <Instagram size={13} strokeWidth={1.5} />
-            Instagram
-          </a>
+            <Instagram size={13} strokeWidth={1.5} style={{ color: "#E1306C" }} />
+            <span className="font-display uppercase" style={{ color: "#E1306C", letterSpacing: "0.22em", fontSize: "0.72rem" }}>
+              Instagram
+            </span>
+          </GlassButton>
         </section>
       </div>
 

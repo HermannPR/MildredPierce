@@ -8,6 +8,9 @@
   --silk-base: #5C0A10;
   --midnight:  #1B262C;
   --fog:       #A3A3A3;
+  /* Glass button color system */
+  --foreground: #F5EDD5;
+  --background: #0d0002;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
