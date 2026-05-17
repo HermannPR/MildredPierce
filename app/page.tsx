@@ -4,14 +4,7 @@ import dynamic from "next/dynamic";
 import { useState, useCallback, useEffect } from "react";
 import { Instagram } from "lucide-react";
 import { HoverMorphText } from "@/components/ui/hover-morph-text";
-import { PreSaveCountdown } from "@/components/ui/pre-save-countdown";
 import { CRTIntro } from "@/components/ui/crt-intro";
-import { TVMan } from "@/components/ui/tv-man";
-
-const SplineScene = dynamic(
-  () => import("@/components/ui/splite").then((m) => m.SplineScene),
-  { ssr: false }
-);
 
 const ShaderAnimation = dynamic(
   () => import("@/components/ui/shader-animation").then((m) => m.ShaderAnimation),
@@ -23,17 +16,20 @@ const SmokeBackground = dynamic(
   { ssr: false }
 );
 
-const RELEASE_DATE  = new Date("2026-05-15T00:00:00Z");
-const SPLINE_SCENE  = "https://prod.spline.design/Dor5qQbQC8MafFxN/scene.splinecode";
+const YOUTUBE_ID    = "wGk5GWPWHzo";
+const SPOTIFY_URL   = "https://open.spotify.com/intl-es/album/52QhMekZYeTTFNOx14Kkla?si=S4ldMHDxSMe-BuIdbfa0lg";
+const YOUTUBE_URL   = "https://youtu.be/wGk5GWPWHzo?si=x5V0kTD6Rg8MN_Qp";
+const INSTAGRAM_URL = "https://www.instagram.com/mildredpierce.__?igsh=MWRnOXZwZTZydzZteQ==";
 
 // ── Palette ──────────────────────────────────────
-const IVORY = "#F5EDD5";
+const IVORY     = "#F5EDD5";
 const PARCHMENT = "#C8B090";
-const RULE  = "rgba(245,237,213,0.22)";
+const RULE      = "rgba(245,237,213,0.22)";
 
-const TITLE_SIZE = "clamp(2.6rem, 6.8vw, 6.2rem)";
-const HOLD_MS    = 3000;
-const MORPH_MS   = 1300;
+const TITLE_SIZE   = "clamp(2.6rem, 6.8vw, 6.2rem)";
+const HOLD_MILDRED = 3000;
+const HOLD_FRACTAL = 5000;  // longer hold — let the single name land
+const MORPH_MS     = 1300;
 
 export default function Home() {
   const [isFractal,     setIsFractal]     = useState(false);
@@ -49,28 +45,23 @@ export default function Home() {
 
     (async () => {
       while (!cancelled) {
-        // ── Hold MILDRED PIERCE ────────────────────────────
-        await delay(HOLD_MS);
+        await delay(HOLD_MILDRED);
         if (cancelled) break;
 
-        // Gooey morph starts
         setIsFractal(true);
         await delay(MORPH_MS);
         if (cancelled) break;
 
-        // Morph done — shader appears with FRACTAL AGREEMENT
         setShaderVisible(true);
 
-        // ── Hold FRACTAL AGREEMENT ─────────────────────────
-        await delay(HOLD_MS);
+        await delay(HOLD_FRACTAL);
         if (cancelled) break;
 
-        // Shader fades out, then morph back
         setShaderVisible(false);
         await delay(400);
         if (cancelled) break;
 
-        setIsFractal(false);            // gooey morph back
+        setIsFractal(false);
         await delay(MORPH_MS);
         if (cancelled) break;
       }
@@ -87,7 +78,7 @@ export default function Home() {
         <SmokeBackground smokeColor="#8B0000" />
       </div>
 
-      {/* Shader — always mounted (native WebGL), visibility controlled by shaderVisible */}
+      {/* Shader — pulses on FRACTAL AGREEMENT state */}
       <div
         className="fixed inset-0 z-[4] pointer-events-none"
         style={{
@@ -102,14 +93,24 @@ export default function Home() {
       {/* ── Content ────────────────────────────────────── */}
       <div className="relative z-20 flex flex-col md:flex-row w-full h-full">
 
-        {/* ── Spline — top on mobile, right on desktop ── */}
+        {/* ── Video — top on mobile, right on desktop ── */}
         <section className="
           order-1 md:order-2
-          h-[20vh] md:h-full
           w-full md:w-[42%] lg:w-[46%]
           flex-shrink-0 relative
+          flex items-center justify-center
+          overflow-hidden
+          h-[56vw] md:h-full
         ">
-          <SplineScene scene={SPLINE_SCENE} className="w-full h-full" />
+          <div style={{ width: "100%", aspectRatio: "16/9" }}>
+            <iframe
+              src={`https://www.youtube.com/embed/${YOUTUBE_ID}?rel=0&modestbranding=1&color=white`}
+              style={{ width: "100%", height: "100%", border: "none", display: "block" }}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              title="Fractal Agreement — Mildred Pierce"
+            />
+          </div>
         </section>
 
         {/* ── Editorial content — bottom on mobile, left on desktop ── */}
@@ -141,7 +142,6 @@ export default function Home() {
               className="absolute inset-0"
               textClassName="font-display leading-none tracking-wide"
             />
-
           </div>
 
           {/* Bottom rule */}
@@ -153,10 +153,42 @@ export default function Home() {
           {/* Spacer */}
           <div className="h-4 md:h-8 lg:h-12" />
 
-          {/* Links + Countdown */}
+          {/* Links */}
           <div className="flex flex-col gap-3">
+
+            {/* Descriptor */}
+            <span
+              className="font-display uppercase select-none"
+              style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.65rem" }}
+            >
+              Debut Single
+            </span>
+
+            {/* Streaming */}
+            <div className="flex flex-col gap-2">
+              <a
+                href={SPOTIFY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-fit font-display uppercase transition-opacity hover:opacity-55"
+                style={{ color: IVORY, letterSpacing: "0.22em", fontSize: "0.75rem" }}
+              >
+                → Spotify
+              </a>
+              <a
+                href={YOUTUBE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-fit font-display uppercase transition-opacity hover:opacity-55"
+                style={{ color: IVORY, letterSpacing: "0.22em", fontSize: "0.75rem" }}
+              >
+                → YouTube
+              </a>
+            </div>
+
+            {/* Instagram */}
             <a
-              href="https://www.instagram.com/mildredpierce.__?igsh=MWRnOXZwZTZydzZteQ=="
+              href={INSTAGRAM_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 w-fit font-display tracking-widest text-xs uppercase transition-opacity hover:opacity-55"
@@ -165,14 +197,9 @@ export default function Home() {
               <Instagram size={13} strokeWidth={1.5} />
               Instagram
             </a>
-
-            <PreSaveCountdown targetDate={RELEASE_DATE} />
           </div>
         </section>
       </div>
-
-      {/* ── TV Man easter egg ── */}
-      <TVMan />
 
       {/* ── CRT intro ── */}
       {!crtDone && <CRTIntro onComplete={handleCRTDone} />}
