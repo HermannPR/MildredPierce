@@ -167,7 +167,7 @@ export default function Home() {
               className="hidden md:block text-center mb-2"
               style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.58rem", opacity: 0.5, fontFamily: "var(--font-display)", textTransform: "uppercase" }}
             >
-              Music Video
+              Fractal Agreement
             </div>
             <div style={{ width: "100%", aspectRatio: "16/9" }}>
               <iframe
@@ -210,22 +210,24 @@ export default function Home() {
           {/* Bottom rule */}
           <div className="mt-3 md:mt-8" style={{ height: 1, background: RULE }} />
 
-          {/* ── Streaming platforms ── */}
-          <div className="flex flex-col">
+          {/* ── Streaming platforms — two-column ── */}
+          <div className="flex items-start gap-4 pt-4 pb-1">
 
-            {/* Band photo + descriptor row */}
-            <div className="flex items-center gap-4 pt-4 pb-2">
-              <div style={{
-                position: "relative",
-                width: 64, height: 64,
-                borderRadius: "50%",
-                overflow: "hidden",
-                flexShrink: 0,
-                border: "1.5px solid rgba(245,237,213,0.30)",
-                boxShadow: "0 0 16px rgba(200,16,42,0.30)",
-              }}>
-                <Image src="/BandImage.jpeg" alt="Mildred Pierce" fill style={{ objectFit: "cover" }} />
-              </div>
+            {/* Band photo */}
+            <div style={{
+              position: "relative",
+              width: 100, height: 100,
+              borderRadius: "50%",
+              overflow: "hidden",
+              flexShrink: 0,
+              border: "1.5px solid rgba(245,237,213,0.28)",
+              boxShadow: "0 0 20px rgba(200,16,42,0.32)",
+            }}>
+              <Image src="/BandImage.jpeg" alt="Mildred Pierce" fill style={{ objectFit: "cover" }} />
+            </div>
+
+            {/* Descriptor + buttons */}
+            <div className="flex flex-col flex-1 gap-2">
               <div className="flex flex-col gap-[3px]">
                 <span
                   className="font-display uppercase select-none"
@@ -235,20 +237,18 @@ export default function Home() {
                 </span>
                 <span
                   className="font-display uppercase select-none"
-                  style={{ color: PARCHMENT, letterSpacing: "0.18em", fontSize: "0.58rem" }}
+                  style={{ color: PARCHMENT, letterSpacing: "0.16em", fontSize: "0.56rem" }}
                 >
                   Debut Single: Fractal Agreement
                 </span>
                 <span
                   className="font-display uppercase select-none"
-                  style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.65rem", opacity: 0.55 }}
+                  style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.55rem", opacity: 0.5 }}
                 >
                   Listen in
                 </span>
               </div>
-            </div>
 
-            <div className="flex flex-col gap-2 pb-1">
               <PlatformLink
                 href={SPOTIFY_URL}
                 icon={<SpotifyIcon />}
