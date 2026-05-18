@@ -368,7 +368,7 @@ export default function Home() {
           >
             <span style={{ fontSize: "0.75rem" }}>▶</span>
             <span className="font-display uppercase" style={{ letterSpacing: "0.20em", fontSize: "0.65rem" }}>
-              Watch Music Video
+              Play Track
             </span>
           </GlassButton>
 
