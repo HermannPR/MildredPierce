@@ -261,7 +261,7 @@ export default function Home() {
               marginTop: "0.6rem",
             }}
           >
-            2025 — Debut Single
+            2026 — Debut Single
           </p>
 
           {/* Bottom rule */}
