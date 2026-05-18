@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Instagram, Youtube } from "lucide-react";
 import { HoverMorphText } from "@/components/ui/hover-morph-text";
 import { CRTIntro } from "@/components/ui/crt-intro";
@@ -23,20 +23,40 @@ const VHSBackground = dynamic(
   { ssr: false }
 );
 
-const YOUTUBE_ID    = "wGk5GWPWHzo";
-const SPOTIFY_URL   = "https://open.spotify.com/intl-es/album/52QhMekZYeTTFNOx14Kkla?si=S4ldMHDxSMe-BuIdbfa0lg";
-const YOUTUBE_URL   = "https://youtu.be/wGk5GWPWHzo?si=x5V0kTD6Rg8MN_Qp";
+const CustomCursor = dynamic(
+  () => import("@/components/ui/custom-cursor").then((m) => m.CustomCursor),
+  { ssr: false }
+);
+
+const WaveformVisualizer = dynamic(
+  () => import("@/components/ui/waveform-visualizer").then((m) => m.WaveformVisualizer),
+  { ssr: false }
+);
+
+const YOUTUBE_ID      = "wGk5GWPWHzo";
+const SPOTIFY_URL     = "https://open.spotify.com/intl-es/album/52QhMekZYeTTFNOx14Kkla?si=S4ldMHDxSMe-BuIdbfa0lg";
+const YOUTUBE_URL     = "https://youtu.be/wGk5GWPWHzo?si=x5V0kTD6Rg8MN_Qp";
 const APPLE_MUSIC_URL = "https://music.apple.com/mx/album/fractal-agreement-single/1896399020?l=en-GB";
-const INSTAGRAM_URL = "https://www.instagram.com/mildredpierce.__?igsh=MWRnOXZwZTZydzZteQ==";
+const INSTAGRAM_URL   = "https://www.instagram.com/mildredpierce.__?igsh=MWRnOXZwZTZydzZteQ==";
 
 const IVORY     = "#F5EDD5";
 const PARCHMENT = "#C8B090";
-const RULE      = "rgba(245,237,213,0.22)";
+const STEEL     = "rgba(180,196,208,0.80)";
+const RULE      = "rgba(160,185,200,0.18)";
 
 const TITLE_SIZE   = "clamp(2.1rem, 6.8vw, 6.2rem)";
 const HOLD_MILDRED = 3000;
 const HOLD_FRACTAL = 5000;
 const MORPH_MS     = 1300;
+
+function openLink(url: string) {
+  if (typeof document !== "undefined" && "startViewTransition" in document) {
+    (document as Document & { startViewTransition: (cb: () => void) => void })
+      .startViewTransition(() => { window.open(url, "_blank", "noopener,noreferrer"); });
+  } else {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
 
 // ── Brand icons ───────────────────────────────────
 function AppleMusicIcon({ size = 13 }: { size?: number }) {
@@ -54,7 +74,6 @@ function SpotifyIcon({ size = 13 }: { size?: number }) {
     </svg>
   );
 }
-
 
 // ── Platform link row ────────────────────────────
 function PlatformLink({
@@ -76,7 +95,7 @@ function PlatformLink({
       size="sm"
       disabled={disabled}
       glassColor={disabled ? "rgba(245,237,213,0.03)" : `${iconColor}18`}
-      onClick={() => { if (href && !disabled) window.open(href, "_blank", "noopener,noreferrer"); }}
+      onClick={() => { if (href && !disabled) openLink(href); }}
     >
       <div className="flex items-center justify-between w-full min-h-[44px]">
         <div className="flex items-center gap-3" style={{ color: iconColor }}>
@@ -90,7 +109,7 @@ function PlatformLink({
         </div>
         <span
           className="font-display uppercase"
-          style={{ color: PARCHMENT, letterSpacing: "0.18em", fontSize: "0.65rem" }}
+          style={{ color: STEEL, letterSpacing: "0.18em", fontSize: "0.65rem" }}
         >
           {disabled ? "Soon" : "↗"}
         </span>
@@ -102,8 +121,23 @@ function PlatformLink({
 export default function Home() {
   const [isFractal, setIsFractal] = useState(false);
   const [crtDone,   setCRTDone]   = useState(false);
+  const photoRef = useRef<HTMLDivElement>(null);
 
   const handleCRTDone = useCallback(() => setCRTDone(true), []);
+
+  // Parallax on band photo
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!photoRef.current) return;
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight / 2;
+      const dx = (e.clientX - cx) / cx;
+      const dy = (e.clientY - cy) / cy;
+      photoRef.current.style.transform = `translate(${dx * -7}px, ${dy * -7}px)`;
+    };
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, []);
 
   useEffect(() => {
     if (!crtDone) return;
@@ -133,7 +167,7 @@ export default function Home() {
 
       {/* ── Background ─────────────────────────────────── */}
       <div className="fixed inset-0 z-0" style={{ backgroundColor: "#0d0002" }}>
-        <SmokeBackground smokeColor="#dd0000" />
+        <SmokeBackground smokeColor="#8B000F" />
       </div>
 
       {/* VHS static */}
@@ -144,10 +178,18 @@ export default function Home() {
         <VHSBackground className="w-full h-full" />
       </div>
 
+      {/* Waveform — decorative background layer synced with fractal depth */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-[3] pointer-events-none"
+        style={{ mixBlendMode: "screen", opacity: 0.35, height: "80px" }}
+      >
+        <WaveformVisualizer opacity={1} />
+      </div>
+
       {/* Fractal rings — vivid crimson ambient layer */}
       <div
         className="fixed inset-0 z-[4] pointer-events-none"
-        style={{ mixBlendMode: "screen", opacity: 0.28 }}
+        style={{ mixBlendMode: "screen", opacity: 0.38 }}
       >
         <ShaderAnimation className="w-full h-full" />
       </div>
@@ -205,9 +247,22 @@ export default function Home() {
               color={IVORY}
               fontSize={TITLE_SIZE}
               className="absolute inset-0"
-              textClassName="font-display leading-tight tracking-wide w-full"
+              textClassName="font-display leading-tight tracking-[0.38em] w-full"
             />
           </div>
+
+          {/* Release date */}
+          <p
+            className="font-display uppercase select-none"
+            style={{
+              color: STEEL,
+              letterSpacing: "0.45em",
+              fontSize: "clamp(0.48rem, 1vw, 0.62rem)",
+              marginTop: "0.6rem",
+            }}
+          >
+            2025 — Debut Single
+          </p>
 
           {/* Bottom rule */}
           <div className="mt-3 md:mt-8" style={{ height: 1, background: RULE }} />
@@ -216,15 +271,19 @@ export default function Home() {
           <div className="flex items-start gap-4 pt-4 pb-1">
 
             {/* Band photo */}
-            <div style={{
-              position: "relative",
-              width: 160, height: 160,
-              borderRadius: "50%",
-              overflow: "hidden",
-              flexShrink: 0,
-              border: "1.5px solid rgba(245,237,213,0.28)",
-              boxShadow: "0 0 32px rgba(200,16,42,0.38)",
-            }}>
+            <div
+              ref={photoRef}
+              style={{
+                position: "relative",
+                width: 160, height: 160,
+                borderRadius: "4px",
+                overflow: "hidden",
+                flexShrink: 0,
+                border: "1px solid rgba(245,237,213,0.18)",
+                boxShadow: "0 0 32px rgba(200,16,42,0.38)",
+                transition: "transform 0.12s ease-out",
+              }}
+            >
               <Image src="/BandImage.jpeg" alt="Mildred Pierce" fill style={{ objectFit: "cover" }} />
             </div>
 
@@ -295,6 +354,9 @@ export default function Home() {
 
       {/* ── CRT intro ── */}
       {!crtDone && <CRTIntro onComplete={handleCRTDone} />}
+
+      {/* ── Custom cursor ── */}
+      <CustomCursor />
     </main>
   );
 }

@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+.font-serif {
+  font-family: var(--font-serif), Georgia, serif;
+}
+
 :root {
   --ivory:     #F5EDD5;
   --parchment: #C8B090;

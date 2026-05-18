@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
+
+const serifFont = Cormorant_Garamond({
+  weight: ["300", "400", "600"],
+  subsets: ["latin"],
+  variable: "--font-serif",
+  display: "swap",
+});
 
 const displayFont = localFont({
   src: "../public/fonts/Bookman ITC Std Demi/Bookman ITC Std Demi.otf",
@@ -21,7 +29,7 @@ export const metadata: Metadata = {
     siteName: "Mildred Pierce",
     images: [
       {
-        url: "/og-image.jpg",
+        url: "/api/og",
         width: 1200,
         height: 630,
         alt: "Mildred Pierce — Fractal Agreement",
@@ -33,7 +41,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Mildred Pierce — Fractal Agreement",
     description: "Debut single out now. Listen on Spotify and YouTube.",
-    images: ["/og-image.jpg"],
+    images: ["/api/og"],
   },
 };
 
@@ -43,7 +51,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={displayFont.variable}>
+    <html lang="en" className={`${displayFont.variable} ${serifFont.variable}`}>
       <body>{children}</body>
     </html>
   );

@@ -1,4 +1,7 @@
+"use client";
+
 import * as React from "react";
+import { useState } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +34,7 @@ export interface GlassButtonProps
 const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>(
   ({ className, children, size, contentClassName, glassColor, ...props }, ref) => {
     const filterId = React.useId().replace(/:/g, "");
+    const [isHovered, setIsHovered] = useState(false);
 
     return (
       <>
@@ -96,6 +100,9 @@ const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>(
         <button
           className={cn(glassButtonVariants({ size }), "btn-liquid", className)}
           ref={ref}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          style={{ filter: isHovered ? "brightness(1.35)" : "brightness(1)", transition: "filter 0.2s ease" }}
           {...props}
         >
           <span className="btn-liquid-lens absolute inset-0 -z-10 rounded-[inherit] pointer-events-none" />
