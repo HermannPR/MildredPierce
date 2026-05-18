@@ -121,6 +121,7 @@ function PlatformLink({
 export default function Home() {
   const [isFractal, setIsFractal] = useState(false);
   const [crtDone,   setCRTDone]   = useState(false);
+  const [smokeHue,  setSmokeHue]  = useState("#8B000F");
   const photoRef = useRef<HTMLDivElement>(null);
 
   const handleCRTDone = useCallback(() => setCRTDone(true), []);
@@ -137,6 +138,17 @@ export default function Home() {
     };
     window.addEventListener("mousemove", onMove);
     return () => window.removeEventListener("mousemove", onMove);
+  }, []);
+
+  // Smoke hue shift — breathes between crimson and dark burgundy every 12s
+  useEffect(() => {
+    const hues = ["#8B000F", "#6B0020", "#3D0030", "#6B0020"];
+    let i = 0;
+    const id = setInterval(() => {
+      i = (i + 1) % hues.length;
+      setSmokeHue(hues[i]);
+    }, 12000);
+    return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
@@ -167,7 +179,7 @@ export default function Home() {
 
       {/* ── Background ─────────────────────────────────── */}
       <div className="fixed inset-0 z-0" style={{ backgroundColor: "#0d0002" }}>
-        <SmokeBackground smokeColor="#8B000F" />
+        <SmokeBackground smokeColor={smokeHue} />
       </div>
 
       {/* VHS static */}
@@ -186,13 +198,24 @@ export default function Home() {
         <WaveformVisualizer opacity={1} />
       </div>
 
-      {/* Fractal rings — vivid crimson ambient layer */}
+      {/* Fractal rings — vivid crimson ambient layer, breathing */}
       <div
         className="fixed inset-0 z-[4] pointer-events-none"
-        style={{ mixBlendMode: "screen", opacity: 0.38 }}
+        style={{ mixBlendMode: "screen", animation: "bg-breathe 8s ease-in-out infinite" }}
       >
         <ShaderAnimation className="w-full h-full" />
       </div>
+
+      {/* Edge crimson bleed + vignette */}
+      <div
+        className="fixed inset-0 z-[6] pointer-events-none"
+        style={{
+          background: `radial-gradient(ellipse at 50% 50%,
+            transparent 28%,
+            rgba(110,0,12,0.32) 65%,
+            rgba(6,0,1,0.88) 100%)`,
+        }}
+      />
 
       {/* ── Content ────────────────────────────────────── */}
       <div className="relative z-20 flex flex-col md:flex-row w-full md:h-full">
@@ -228,11 +251,11 @@ export default function Home() {
         {/* ── Editorial content — top on mobile, left on desktop ── */}
         <section className="
           order-1 md:order-1
-          flex flex-col justify-center flex-1 min-w-0 overflow-hidden
+          flex flex-col justify-center flex-1
           px-6 md:px-10 lg:px-16
           pt-6 pb-4 md:py-0
           gap-0
-          relative z-10 md:z-auto
+          relative z-30
         ">
 
           {/* Top rule */}
@@ -247,7 +270,7 @@ export default function Home() {
               color={IVORY}
               fontSize={TITLE_SIZE}
               className="absolute inset-0"
-              textClassName="font-display leading-tight tracking-[0.22em] w-full"
+              textClassName="font-display leading-tight tracking-[0.14em] w-full"
             />
           </div>
 

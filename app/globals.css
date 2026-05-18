@@ -50,6 +50,16 @@ body::before {
 }
 
 
+/* Background breathe — fractal + smoke pulse */
+@keyframes bg-breathe {
+  0%, 100% { opacity: 0.38; }
+  50%       { opacity: 0.52; }
+}
+@keyframes bg-breathe-slow {
+  0%, 100% { opacity: 0.28; }
+  50%       { opacity: 0.16; }
+}
+
 /* Film grain — very subtle on silk */
 body::after {
   content: "";
