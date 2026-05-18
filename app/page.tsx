@@ -269,6 +269,12 @@ export default function Home() {
                 label="Apple Music"
                 iconColor="#FC3C44"
               />
+              <PlatformLink
+                href={INSTAGRAM_URL}
+                icon={<Instagram size={13} strokeWidth={1.5} />}
+                label="Instagram"
+                iconColor="#E1306C"
+              />
             </div>
           </div>
 
@@ -281,19 +287,6 @@ export default function Home() {
             <span style={{ fontSize: "0.75rem" }}>▶</span>
             <span className="font-display uppercase" style={{ letterSpacing: "0.20em", fontSize: "0.65rem" }}>
               Watch Music Video
-            </span>
-          </GlassButton>
-
-          {/* Instagram */}
-          <GlassButton
-            className="self-start mt-3"
-            size="sm"
-            glassColor="rgba(225,48,108,0.12)"
-            onClick={() => window.open(INSTAGRAM_URL, "_blank", "noopener,noreferrer")}
-          >
-            <Instagram size={13} strokeWidth={1.5} style={{ color: "#E1306C" }} />
-            <span className="font-display uppercase" style={{ color: "#E1306C", letterSpacing: "0.22em", fontSize: "0.72rem" }}>
-              Instagram
             </span>
           </GlassButton>
 
@@ -315,12 +308,7 @@ export default function Home() {
               glassColor="rgba(245,237,213,0.06)"
               onClick={() => { /* TODO: wire submission */ }}
             >
-              <span
-                className="font-display uppercase"
-                style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.65rem" }}
-              >
-                Receive transmissions.
-              </span>
+              <span style={{ color: PARCHMENT, fontSize: "0.75rem" }}>→</span>
             </GlassButton>
           </div>
         </section>
