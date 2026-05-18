@@ -209,37 +209,8 @@ export default function Home() {
             />
           </div>
 
-          {/* Tagline */}
-          <p
-            className="font-display uppercase select-none"
-            style={{
-              color: PARCHMENT,
-              letterSpacing: "0.28em",
-              fontSize: "clamp(0.55rem, 1.2vw, 0.72rem)",
-              opacity: 0.65,
-              marginTop: "0.5rem",
-            }}
-          >
-            Where the signal breaks, something remains.
-          </p>
-
           {/* Bottom rule */}
           <div className="mt-3 md:mt-8" style={{ height: 1, background: RULE }} />
-
-          {/* Bio */}
-          <p
-            className="hidden md:block font-display select-none"
-            style={{
-              color: PARCHMENT,
-              letterSpacing: "0.06em",
-              fontSize: "0.68rem",
-              opacity: 0.72,
-              paddingTop: "0.75rem",
-              lineHeight: 1.7,
-            }}
-          >
-            Mildred Pierce emerges from the static with Fractal Agreement — a debut that feels both excavated and inevitable.
-          </p>
 
           {/* ── Streaming platforms — two-column ── */}
           <div className="flex items-start gap-4 pt-4 pb-1">
