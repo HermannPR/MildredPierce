@@ -228,7 +228,7 @@ export default function Home() {
         {/* ── Editorial content — top on mobile, left on desktop ── */}
         <section className="
           order-1 md:order-1
-          flex flex-col justify-center flex-1
+          flex flex-col justify-center flex-1 min-w-0 overflow-hidden
           px-6 md:px-10 lg:px-16
           pt-6 pb-4 md:py-0
           gap-0
@@ -247,7 +247,7 @@ export default function Home() {
               color={IVORY}
               fontSize={TITLE_SIZE}
               className="absolute inset-0"
-              textClassName="font-display leading-tight tracking-[0.38em] w-full"
+              textClassName="font-display leading-tight tracking-[0.22em] w-full"
             />
           </div>
 
