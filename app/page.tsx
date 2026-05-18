@@ -26,6 +26,7 @@ const VHSBackground = dynamic(
 const YOUTUBE_ID    = "wGk5GWPWHzo";
 const SPOTIFY_URL   = "https://open.spotify.com/intl-es/album/52QhMekZYeTTFNOx14Kkla?si=S4ldMHDxSMe-BuIdbfa0lg";
 const YOUTUBE_URL   = "https://youtu.be/wGk5GWPWHzo?si=x5V0kTD6Rg8MN_Qp";
+const APPLE_MUSIC_URL = "https://music.apple.com/mx/album/fractal-agreement-single/1896399020?l=en-GB";
 const INSTAGRAM_URL = "https://www.instagram.com/mildredpierce.__?igsh=MWRnOXZwZTZydzZteQ==";
 
 const IVORY     = "#F5EDD5";
@@ -38,6 +39,14 @@ const HOLD_FRACTAL = 5000;
 const MORPH_MS     = 1300;
 
 // ── Brand icons ───────────────────────────────────
+function AppleMusicIcon({ size = 13 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}>
+      <path d="M8 3v10.46A4.5 4.5 0 1 0 12 18V7h6V3H8z"/>
+    </svg>
+  );
+}
+
 function SpotifyIcon({ size = 13 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}>
@@ -46,13 +55,6 @@ function SpotifyIcon({ size = 13 }: { size?: number }) {
   );
 }
 
-function AppleMusicIcon({ size = 13 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}>
-      <path d="M8 3v10.46A4.5 4.5 0 1 0 12 18V7h6V3H8z"/>
-    </svg>
-  );
-}
 
 // ── Platform link row ────────────────────────────
 function PlatformLink({
@@ -165,7 +167,7 @@ export default function Home() {
           <div className="w-full">
             <div
               className="hidden md:block text-center mb-2"
-              style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.58rem", opacity: 0.5, fontFamily: "var(--font-display)", textTransform: "uppercase" }}
+              style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.65rem", fontFamily: "var(--font-display)", textTransform: "uppercase" }}
             >
               Fractal Agreement
             </div>
@@ -207,8 +209,37 @@ export default function Home() {
             />
           </div>
 
+          {/* Tagline */}
+          <p
+            className="font-display uppercase select-none"
+            style={{
+              color: PARCHMENT,
+              letterSpacing: "0.28em",
+              fontSize: "clamp(0.55rem, 1.2vw, 0.72rem)",
+              opacity: 0.65,
+              marginTop: "0.5rem",
+            }}
+          >
+            Where the signal breaks, something remains.
+          </p>
+
           {/* Bottom rule */}
           <div className="mt-3 md:mt-8" style={{ height: 1, background: RULE }} />
+
+          {/* Bio */}
+          <p
+            className="hidden md:block font-display select-none"
+            style={{
+              color: PARCHMENT,
+              letterSpacing: "0.06em",
+              fontSize: "0.68rem",
+              opacity: 0.72,
+              paddingTop: "0.75rem",
+              lineHeight: 1.7,
+            }}
+          >
+            Mildred Pierce emerges from the static with Fractal Agreement — a debut that feels both excavated and inevitable.
+          </p>
 
           {/* ── Streaming platforms — two-column ── */}
           <div className="flex items-start gap-4 pt-4 pb-1">
@@ -216,12 +247,12 @@ export default function Home() {
             {/* Band photo */}
             <div style={{
               position: "relative",
-              width: 100, height: 100,
+              width: 160, height: 160,
               borderRadius: "50%",
               overflow: "hidden",
               flexShrink: 0,
               border: "1.5px solid rgba(245,237,213,0.28)",
-              boxShadow: "0 0 20px rgba(200,16,42,0.32)",
+              boxShadow: "0 0 32px rgba(200,16,42,0.38)",
             }}>
               <Image src="/BandImage.jpeg" alt="Mildred Pierce" fill style={{ objectFit: "cover" }} />
             </div>
@@ -237,15 +268,15 @@ export default function Home() {
                 </span>
                 <span
                   className="font-display uppercase select-none"
-                  style={{ color: PARCHMENT, letterSpacing: "0.16em", fontSize: "0.56rem" }}
+                  style={{ color: PARCHMENT, letterSpacing: "0.16em", fontSize: "0.65rem" }}
                 >
                   Debut Single: Fractal Agreement
                 </span>
                 <span
                   className="font-display uppercase select-none"
-                  style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.55rem", opacity: 0.5 }}
+                  style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.65rem", opacity: 0.7 }}
                 >
-                  Listen in
+                  Enter the signal.
                 </span>
               </div>
 
@@ -262,10 +293,10 @@ export default function Home() {
                 iconColor="#FF0000"
               />
               <PlatformLink
+                href={APPLE_MUSIC_URL}
                 icon={<AppleMusicIcon />}
                 label="Apple Music"
                 iconColor="#FC3C44"
-                disabled
               />
             </div>
           </div>
@@ -294,6 +325,33 @@ export default function Home() {
               Instagram
             </span>
           </GlassButton>
+
+          {/* ── Email capture ── */}
+          <div className="flex items-center gap-2 mt-3 w-full max-w-xs">
+            <input
+              type="email"
+              placeholder="your@email.com"
+              className="font-display flex-1 min-w-0 bg-transparent border-0 border-b outline-none py-1"
+              style={{
+                color: IVORY,
+                borderColor: RULE,
+                letterSpacing: "0.08em",
+                fontSize: "0.65rem",
+              }}
+            />
+            <GlassButton
+              size="sm"
+              glassColor="rgba(245,237,213,0.06)"
+              onClick={() => { /* TODO: wire submission */ }}
+            >
+              <span
+                className="font-display uppercase"
+                style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.65rem" }}
+              >
+                Receive transmissions.
+              </span>
+            </GlassButton>
+          </div>
         </section>
       </div>
 
