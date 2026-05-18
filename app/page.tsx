@@ -290,27 +290,6 @@ export default function Home() {
             </span>
           </GlassButton>
 
-          {/* ── Email capture ── */}
-          <div className="flex items-center gap-2 mt-3 w-full max-w-xs">
-            <input
-              type="email"
-              placeholder="your@email.com"
-              className="font-display flex-1 min-w-0 bg-transparent border-0 border-b outline-none py-1"
-              style={{
-                color: IVORY,
-                borderColor: RULE,
-                letterSpacing: "0.08em",
-                fontSize: "0.65rem",
-              }}
-            />
-            <GlassButton
-              size="sm"
-              glassColor="rgba(245,237,213,0.06)"
-              onClick={() => { /* TODO: wire submission */ }}
-            >
-              <span style={{ color: PARCHMENT, fontSize: "0.75rem" }}>→</span>
-            </GlassButton>
-          </div>
         </section>
       </div>
 
