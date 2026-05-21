@@ -357,6 +357,12 @@ export default function Home() {
                 label="Instagram"
                 iconColor="#E1306C"
               />
+              <PlatformLink
+                href="/game"
+                icon={<span style={{ fontSize: 13 }}>📺</span>}
+                label="Feed the Signal"
+                iconColor="#7b5ea7"
+              />
             </div>
           </div>
 
