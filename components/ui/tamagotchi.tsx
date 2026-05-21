@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 
-const API = process.env.NEXT_PUBLIC_TAMA_API ?? "";
+const API = "/api";
 const PX  = 6;
 
 const C = {
@@ -218,26 +218,14 @@ export function Tamagotchi() {
     return () => cancelAnimationFrame(rafRef.current);
   }, []);
 
-  const SESSION = useRef(Math.random().toString(36).slice(2));
-
-  const handleClick = useCallback(async () => {
+  const handleClick = useCallback(() => {
     if (cooldownRef.current) return;
-    try {
-      const res = await fetch(`${API}/click`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: SESSION.current }),
-      });
-      if (!res.ok) return;
-    } catch { return; }
-
     const next = scoreRef.current + 1;
     scoreRef.current = next;
     setScore(next);
     stateRef.current = "happy";
     bounceFrame.current = 40;
     lastClick.current = Date.now();
-
     cooldownRef.current = true;
     setCooldown(true);
     setTimeout(() => { cooldownRef.current = false; setCooldown(false); }, 3000);
