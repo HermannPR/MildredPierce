@@ -2,32 +2,26 @@ import { NextResponse } from "next/server";
 
 const PI_API = process.env.NEXT_PUBLIC_TAMAGOTCHI_API ?? "";
 
-const MOCK = [
-  { rank: 1, nick: "KPOP", score: 1204 },
-  { rank: 2, nick: "MRKR", score: 988 },
-  { rank: 3, nick: "NEON", score: 741 },
-  { rank: 4, nick: "VOID", score: 502 },
-  { rank: 5, nick: "PXEL", score: 389 },
+export const MOCK_USERS = [
+  { rank: 1, alias: "KPOP", clicks: 1204 },
+  { rank: 2, alias: "MRKR", clicks: 988 },
+  { rank: 3, alias: "NEON", clicks: 741 },
+  { rank: 4, alias: "VOID", clicks: 502 },
+  { rank: 5, alias: "PXEL", clicks: 389 },
+  { rank: 6, alias: "LUNA", clicks: 211 },
+  { rank: 7, alias: "FUZZ", clicks: 98 },
 ];
+export const MOCK_PET = { happiness: 72, energy: 58, mood: "HAPPY" };
 
 export async function GET() {
   if (PI_API) {
     try {
-      const res = await fetch(`${PI_API}/api/leaderboard`, {
-        next: { revalidate: 10 },
-      });
+      const res = await fetch(`${PI_API}/api/leaderboard`, { next: { revalidate: 10 } });
       if (res.ok) {
         const data = await res.json();
-        const rows = (data.users ?? []).map((u: { rank: number; alias: string; clicks: number }) => ({
-          rank: u.rank,
-          nick: u.alias,
-          score: u.clicks,
-        }));
-        return NextResponse.json(rows);
+        return NextResponse.json({ ...data, piOnline: true });
       }
-    } catch {
-      // fall through to mock
-    }
+    } catch { /* fall through */ }
   }
-  return NextResponse.json(MOCK);
+  return NextResponse.json({ users: MOCK_USERS, pet: MOCK_PET, piOnline: false });
 }

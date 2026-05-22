@@ -357,12 +357,6 @@ export default function Home() {
                 label="Instagram"
                 iconColor="#E1306C"
               />
-              <PlatformLink
-                href="/game"
-                icon={<span style={{ fontSize: 13 }}>📺</span>}
-                label="Feed the Signal"
-                iconColor="#7b5ea7"
-              />
             </div>
           </div>
 
@@ -377,6 +371,60 @@ export default function Home() {
               Play Track
             </span>
           </GlassButton>
+
+          {/* ── Feed the Signal — standalone CTA ── */}
+          <a
+            href="/tamagotchi"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+              marginTop: 12,
+              padding: "14px 18px",
+              background: "linear-gradient(135deg, #020d22 0%, #041830 100%)",
+              border: "1px solid #00c8ff55",
+              borderRadius: 4,
+              boxShadow: "0 0 24px #00c8ff22, inset 0 0 24px #00c8ff08",
+              textDecoration: "none",
+              transition: "box-shadow 0.2s, border-color 0.2s",
+              cursor: "pointer",
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 0 40px #00c8ff44, inset 0 0 30px #00c8ff14";
+              (e.currentTarget as HTMLElement).style.borderColor = "#00c8ffaa";
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 0 24px #00c8ff22, inset 0 0 24px #00c8ff08";
+              (e.currentTarget as HTMLElement).style.borderColor = "#00c8ff55";
+            }}
+          >
+            <span style={{ fontSize: 32, lineHeight: 1 }}>📺</span>
+            <div style={{ flex: 1 }}>
+              <div
+                className="font-display uppercase"
+                style={{
+                  color: "#00c8ff",
+                  fontSize: "clamp(0.75rem, 2vw, 1rem)",
+                  letterSpacing: "0.28em",
+                  textShadow: "0 0 14px #00c8ffaa",
+                }}
+              >
+                Feed the Signal
+              </div>
+              <div
+                className="font-display uppercase"
+                style={{
+                  color: "#4a7a9b",
+                  fontSize: "0.58rem",
+                  letterSpacing: "0.18em",
+                  marginTop: 3,
+                }}
+              >
+                Click the TV head · join the leaderboard
+              </div>
+            </div>
+            <span style={{ color: "#00c8ff", fontSize: "1.3rem", textShadow: "0 0 10px #00c8ff" }}>→</span>
+          </a>
 
         </section>
       </div>

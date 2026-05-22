@@ -98,10 +98,10 @@ export default function TamagotchiPage() {
       })
       const data = await res.json()
       if (res.ok) {
-        setServerOnline(true)
+        setServerOnline(!!data.piOnline)
         setLocalClicks(data.clicks); saveClicks(data.clicks)
         setMyRank(data.rank)
-        setPet(data.pet)
+        if (data.pet) setPet(data.pet)
         setSyncNote('')
       }
     } catch {
@@ -118,10 +118,12 @@ export default function TamagotchiPage() {
       const res  = await apiFetch('/api/leaderboard')
       const data = await res.json()
       if (!res.ok) throw new Error()
-      setServerOnline(true)
-      setPet(data.pet)
+      const piOnline = !!data.piOnline
+      setServerOnline(piOnline)
+      if (data.pet) setPet(data.pet)
       setBoard(data.users || [])
-      setSyncNote('')
+      if (!piOnline) applySyncNote(pendingRef.current, false)
+      else setSyncNote('')
     } catch {
       setServerOnline(false)
       setPet(MOCK_PET)
@@ -165,10 +167,10 @@ export default function TamagotchiPage() {
       })
       const data = await res.json()
       if (!res.ok) { setAliasError(data.error || 'Error'); return }
-      setLocalClicks(data.clicks); saveClicks(data.clicks)
-      setMyRank(data.rank)
-      setPet(data.pet)
-      setServerOnline(true)
+      setLocalClicks(data.clicks ?? 0); saveClicks(data.clicks ?? 0)
+      setMyRank(data.rank ?? null)
+      if (data.pet) setPet(data.pet)
+      setServerOnline(!!data.piOnline)
     } catch {
       setServerOnline(false)
       setPet(MOCK_PET)
@@ -194,9 +196,10 @@ export default function TamagotchiPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ alias: savedAlias }),
       }).then(r => r.json()).then(d => {
-        setServerOnline(true)
-        setLocalClicks(d.clicks); saveClicks(d.clicks)
-        setMyRank(d.rank); setPet(d.pet)
+        setServerOnline(!!d.piOnline)
+        setLocalClicks(d.clicks ?? 0); saveClicks(d.clicks ?? 0)
+        setMyRank(d.rank ?? null)
+        if (d.pet) setPet(d.pet)
       }).catch(() => { setServerOnline(false); setPet(MOCK_PET) })
     }
 
@@ -400,11 +403,12 @@ const CSS = `
     --t-font:     'Georgia', 'Bookman Old Style', serif;
   }
 
-  /* full-viewport shell — escapes root overflow:hidden */
+  /* full-viewport shell — escapes root overflow:hidden and all global bg */
   .t-root {
     position: fixed;
     inset: 0;
-    background: var(--t-bg);
+    z-index: 100;
+    background: #020a18;
     overflow-y: auto;
     overflow-x: hidden;
     color: var(--t-ivory);
