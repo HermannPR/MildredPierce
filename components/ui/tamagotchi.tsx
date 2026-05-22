@@ -147,7 +147,7 @@ export function Tamagotchi() {
       if (st === "happy" && bounceFrame.current <= 0) st = "idle";
       if (elapsed > 120) st = "sleep";
       else if (elapsed > 30 && st !== "glitch" && st !== "happy") {
-        if (st !== "glitch") noiseRef.current = makeStatic();
+        noiseRef.current = makeStatic();
         st = "glitch";
       }
       stateRef.current = st;
@@ -182,7 +182,7 @@ export function Tamagotchi() {
 
       // draw
       ctx.fillStyle = C.bg;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, canvas!.width, canvas!.height);
       drawBody(ctx, dy);
       drawTV(ctx, dy, !eyeOpen, st==="glitch", st==="sleep", noiseRef.current);
 
