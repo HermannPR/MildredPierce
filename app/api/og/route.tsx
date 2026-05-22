@@ -22,7 +22,7 @@ export function GET() {
             position: "absolute",
             inset: 0,
             background:
-              "radial-gradient(ellipse at center, rgba(200,16,42,0.4) 0%, transparent 70%)",
+              "radial-gradient(ellipse at center, rgba(0,200,255,0.4) 0%, transparent 70%)",
           }}
         />
 

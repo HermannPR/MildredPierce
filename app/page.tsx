@@ -343,19 +343,19 @@ export default function Home() {
                 href={YOUTUBE_URL}
                 icon={<Youtube size={13} strokeWidth={0} fill="currentColor" />}
                 label="YouTube"
-                iconColor="#FF0000"
+                iconColor="#00c8ff"
               />
               <PlatformLink
                 href={APPLE_MUSIC_URL}
                 icon={<AppleMusicIcon />}
                 label="Apple Music"
-                iconColor="#FC3C44"
+                iconColor="#00c8ff"
               />
               <PlatformLink
                 href={INSTAGRAM_URL}
                 icon={<Instagram size={13} strokeWidth={1.5} />}
                 label="Instagram"
-                iconColor="#E1306C"
+                iconColor="#00c8ff"
               />
             </div>
           </div>

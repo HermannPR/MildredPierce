@@ -80,7 +80,7 @@ export function WaveformVisualizer({ opacity = 0.6 }: { opacity?: number }) {
               y={y}
               width={BAR_WIDTH}
               height={barHeight}
-              fill="rgba(200,16,42,0.5)"
+              fill="rgba(0,200,255,0.5)"
               style={{
                 transformOrigin: `${x + BAR_WIDTH / 2}px ${SVG_HEIGHT / 2}px`,
                 animation: `waveform-pulse-${variant} ${duration.toFixed(2)}s ${delay.toFixed(2)}s ease-in-out infinite`,
