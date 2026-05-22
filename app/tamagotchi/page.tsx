@@ -303,43 +303,38 @@ export default function TamagotchiPage() {
                 <rect x="28" y="24" width="64" height="52" rx="3" fill="#020a18" stroke="#0a2a50" strokeWidth="1"/>
                 {/* screen glass */}
                 <rect className="t-tv-screen" x="30" y="26" width="60" height="48" rx="2" fill="#03050f"/>
-                {/* scan line shimmer */}
-                <rect x="30" y="26" width="60" height="2" rx="1" fill="#00c8ff" opacity="0.04"/>
-                <rect x="30" y="34" width="60" height="1" fill="#00c8ff" opacity="0.03"/>
-                <rect x="30" y="50" width="60" height="1" fill="#00c8ff" opacity="0.03"/>
-                <rect x="30" y="66" width="60" height="1" fill="#00c8ff" opacity="0.03"/>
-                {/* eyes / mouth */}
-                <text x="48"  y="56" textAnchor="middle" fontSize="11" fill="#00c8ff" fontFamily="monospace" opacity="0.9">{face.el}</text>
-                <text x="72"  y="56" textAnchor="middle" fontSize="11" fill="#00c8ff" fontFamily="monospace" opacity="0.9">{face.er}</text>
-                <text x="60"  y="67" textAnchor="middle" fontSize="9"  fill="#00c8ff" fontFamily="monospace" opacity="0.7">{face.m}</text>
-                {/* corner reflection */}
-                <rect x="32" y="28" width="8" height="2" rx="1" fill="#ffffff" opacity="0.06"/>
-                <rect x="32" y="28" width="2" height="6" rx="1" fill="#ffffff" opacity="0.06"/>
+                {/* screen — completely dark, no face, just faint static */}
+                <rect x="32" y="28" width="8" height="2" rx="1" fill="#ffffff" opacity="0.04"/>
+                <rect x="32" y="28" width="2" height="5" rx="1" fill="#ffffff" opacity="0.04"/>
+                {/* faint horizontal static lines — no eyes, no mouth */}
+                {[30,36,42,48,54,60,66].map(y => (
+                  <rect key={y} x="30" y={y} width={20 + Math.abs(y - 48) * 0.3} height="0.8" fill="#00c8ff" opacity="0.025"/>
+                ))}
+                {/* single dim glow in centre of screen — like a dying signal */}
+                <ellipse cx="60" cy="50" rx="14" ry="10" fill="#00c8ff" opacity="0.03"/>
 
                 {/* neck */}
-                <rect x="55" y="82" width="10" height="12" rx="1" fill="#030c1c"/>
+                <rect x="56" y="82" width="8" height="12" rx="1" fill="#030c1c"/>
 
                 {/* torso — slim */}
-                <rect x="38" y="94" width="44" height="58" rx="4" fill="#040e22" stroke="#0d3a6e" strokeWidth="1.2"/>
-                {/* chest detail line */}
-                <line x1="60" y1="104" x2="60" y2="140" stroke="#0a2a50" strokeWidth="0.8"/>
+                <rect x="40" y="94" width="40" height="56" rx="3" fill="#040e22" stroke="#0d3a6e" strokeWidth="1.2"/>
                 {/* chest glow dot */}
-                <circle cx="60" cy="114" r="3" fill="#00c8ff" opacity="0.5"/>
-                <circle cx="60" cy="114" r="5" fill="none" stroke="#00c8ff" strokeWidth="0.5" opacity="0.3"/>
+                <circle cx="60" cy="116" r="2.5" fill="#00c8ff" opacity="0.45"/>
+                <circle cx="60" cy="116" r="5"   fill="none" stroke="#00c8ff" strokeWidth="0.4" opacity="0.2"/>
 
-                {/* arms — long and thin */}
-                <rect x="18" y="96" width="20" height="6" rx="3" fill="#040e22" stroke="#0d3a6e" strokeWidth="1"/>
-                <rect x="82" y="96" width="20" height="6" rx="3" fill="#040e22" stroke="#0d3a6e" strokeWidth="1"/>
-                {/* hands */}
-                <ellipse cx="14" cy="99" rx="5" ry="4" fill="#040e22" stroke="#0d3a6e" strokeWidth="1"/>
-                <ellipse cx="106" cy="99" rx="5" ry="4" fill="#040e22" stroke="#0d3a6e" strokeWidth="1"/>
+                {/* arms — unnaturally long, hang down from shoulders */}
+                <rect x="28" y="96"  width="12" height="72" rx="4" fill="#040e22" stroke="#0d3a6e" strokeWidth="1"/>
+                <rect x="80" y="96"  width="12" height="72" rx="4" fill="#040e22" stroke="#0d3a6e" strokeWidth="1"/>
+                {/* hands — slightly large, ominous */}
+                <ellipse cx="34" cy="172" rx="7"  ry="5" fill="#040e22" stroke="#0d3a6e" strokeWidth="1"/>
+                <ellipse cx="86" cy="172" rx="7"  ry="5" fill="#040e22" stroke="#0d3a6e" strokeWidth="1"/>
 
-                {/* legs — long and slim */}
-                <rect x="46" y="152" width="10" height="56" rx="3" fill="#040e22" stroke="#0d3a6e" strokeWidth="1"/>
-                <rect x="64" y="152" width="10" height="56" rx="3" fill="#040e22" stroke="#0d3a6e" strokeWidth="1"/>
+                {/* legs — long, slim */}
+                <rect x="47" y="150" width="9" height="60" rx="3" fill="#040e22" stroke="#0d3a6e" strokeWidth="1"/>
+                <rect x="64" y="150" width="9" height="60" rx="3" fill="#040e22" stroke="#0d3a6e" strokeWidth="1"/>
                 {/* feet */}
-                <ellipse cx="51" cy="208" rx="10" ry="5" fill="#020a18" stroke="#0a2a50" strokeWidth="1"/>
-                <ellipse cx="69" cy="208" rx="10" ry="5" fill="#020a18" stroke="#0a2a50" strokeWidth="1"/>
+                <ellipse cx="51" cy="210" rx="10" ry="5" fill="#020a18" stroke="#0a2a50" strokeWidth="1"/>
+                <ellipse cx="69" cy="210" rx="10" ry="5" fill="#020a18" stroke="#0a2a50" strokeWidth="1"/>
               </svg>
               {pet.mood === 'SLEEPING' && (
                 <div className="t-zzz-group">

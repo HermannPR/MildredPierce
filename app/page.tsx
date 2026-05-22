@@ -121,7 +121,7 @@ function PlatformLink({
 export default function Home() {
   const [isFractal, setIsFractal] = useState(false);
   const [crtDone,   setCRTDone]   = useState(false);
-  const [smokeHue,  setSmokeHue]  = useState("#8B000F");
+  const [smokeHue,  setSmokeHue]  = useState("#001840");
   const photoRef = useRef<HTMLDivElement>(null);
 
   const handleCRTDone = useCallback(() => setCRTDone(true), []);
@@ -142,7 +142,7 @@ export default function Home() {
 
   // Smoke hue shift — breathes between crimson and dark burgundy every 12s
   useEffect(() => {
-    const hues = ["#8B000F", "#6B0020", "#3D0030", "#6B0020"];
+    const hues = ["#001840", "#000d28", "#002060", "#001030"];
     let i = 0;
     const id = setInterval(() => {
       i = (i + 1) % hues.length;
@@ -178,7 +178,7 @@ export default function Home() {
     <main className="relative w-full min-h-screen overflow-x-hidden md:h-screen md:overflow-hidden">
 
       {/* ── Background ─────────────────────────────────── */}
-      <div className="fixed inset-0 z-0" style={{ backgroundColor: "#0d0002" }}>
+      <div className="fixed inset-0 z-0" style={{ backgroundColor: "#020a18" }}>
         <SmokeBackground smokeColor={smokeHue} />
       </div>
 
@@ -206,14 +206,14 @@ export default function Home() {
         <ShaderAnimation className="w-full h-full" />
       </div>
 
-      {/* Edge crimson bleed + vignette */}
+      {/* Edge blue bleed + vignette */}
       <div
         className="fixed inset-0 z-[6] pointer-events-none"
         style={{
           background: `radial-gradient(ellipse at 50% 50%,
             transparent 28%,
-            rgba(110,0,12,0.32) 65%,
-            rgba(6,0,1,0.88) 100%)`,
+            rgba(0,80,160,0.28) 65%,
+            rgba(1,4,18,0.88) 100%)`,
         }}
       />
 
@@ -303,7 +303,7 @@ export default function Home() {
                 overflow: "hidden",
                 flexShrink: 0,
                 border: "1px solid rgba(245,237,213,0.18)",
-                boxShadow: "0 0 32px rgba(200,16,42,0.38)",
+                boxShadow: "0 0 32px rgba(0,200,255,0.25)",
                 transition: "transform 0.12s ease-out",
               }}
             >
