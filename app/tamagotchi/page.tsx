@@ -285,7 +285,7 @@ export default function TamagotchiPage() {
             <div className="t-pet-wrap">
               <svg
                 className={svgClass}
-                viewBox="0 0 180 220"
+                viewBox="0 0 120 260"
                 xmlns="http://www.w3.org/2000/svg"
                 onClick={onPetClick}
                 onKeyDown={e => (e.key === ' ' || e.key === 'Enter') && onPetClick()}
@@ -293,26 +293,53 @@ export default function TamagotchiPage() {
                 tabIndex={0}
                 aria-label="Click to feed"
               >
-                <rect x="86" y="4" width="8" height="22" rx="4" fill="#C8B090"/>
-                <circle cx="90" cy="4" r="5" fill="#00c8ff"/>
-                <rect x="30" y="24" width="120" height="90" rx="10" fill="#040e22" stroke="#0d3a6e" strokeWidth="2"/>
-                <rect x="40" y="32" width="100" height="72" rx="6" fill="#020a18" stroke="#0a2a50" strokeWidth="1.5"/>
-                <rect className="t-tv-screen" x="44" y="36" width="92" height="64" rx="4" fill="#0f0010"/>
-                <text x="68"  y="72" textAnchor="middle" fontSize="16" fill="#F5EDD5" fontFamily="monospace">{face.el}</text>
-                <text x="112" y="72" textAnchor="middle" fontSize="16" fill="#F5EDD5" fontFamily="monospace">{face.er}</text>
-                <text x="90"  y="88" textAnchor="middle" fontSize="14" fill="#F5EDD5" fontFamily="monospace">{face.m}</text>
-                <rect x="82" y="114" width="16" height="14" rx="2" fill="#0a2a50"/>
-                <rect x="46" y="128" width="88" height="52" rx="8" fill="#040e22" stroke="#0d3a6e" strokeWidth="2"/>
-                <rect x="74" y="140" width="32" height="20" rx="4" fill="#020a18" stroke="#0a2a50" strokeWidth="1"/>
-                <circle cx="90" cy="150" r="5" fill="#00c8ff" opacity="0.7"/>
-                <rect x="20" y="128" width="28" height="12" rx="6" fill="#040e22" stroke="#0d3a6e" strokeWidth="1.5"/>
-                <circle cx="16" cy="134" r="7" fill="#040e22" stroke="#0d3a6e" strokeWidth="1.5"/>
-                <rect x="132" y="128" width="28" height="12" rx="6" fill="#040e22" stroke="#0d3a6e" strokeWidth="1.5"/>
-                <circle cx="164" cy="134" r="7" fill="#040e22" stroke="#0d3a6e" strokeWidth="1.5"/>
-                <rect x="58" y="178" width="24" height="32" rx="6" fill="#040e22" stroke="#0d3a6e" strokeWidth="1.5"/>
-                <rect x="98" y="178" width="24" height="32" rx="6" fill="#040e22" stroke="#0d3a6e" strokeWidth="1.5"/>
-                <ellipse cx="70"  cy="210" rx="16" ry="8" fill="#020a18" stroke="#0a2a50" strokeWidth="1.5"/>
-                <ellipse cx="110" cy="210" rx="16" ry="8" fill="#020a18" stroke="#0a2a50" strokeWidth="1.5"/>
+                {/* antenna */}
+                <line x1="60" y1="2" x2="60" y2="18" stroke="#0d3a6e" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="60" cy="2" r="3" fill="#00c8ff" opacity="0.9"/>
+
+                {/* TV head — tall and narrow */}
+                <rect x="22" y="18" width="76" height="64" rx="5" fill="#040e22" stroke="#0d3a6e" strokeWidth="1.5"/>
+                {/* screen inset */}
+                <rect x="28" y="24" width="64" height="52" rx="3" fill="#020a18" stroke="#0a2a50" strokeWidth="1"/>
+                {/* screen glass */}
+                <rect className="t-tv-screen" x="30" y="26" width="60" height="48" rx="2" fill="#03050f"/>
+                {/* scan line shimmer */}
+                <rect x="30" y="26" width="60" height="2" rx="1" fill="#00c8ff" opacity="0.04"/>
+                <rect x="30" y="34" width="60" height="1" fill="#00c8ff" opacity="0.03"/>
+                <rect x="30" y="50" width="60" height="1" fill="#00c8ff" opacity="0.03"/>
+                <rect x="30" y="66" width="60" height="1" fill="#00c8ff" opacity="0.03"/>
+                {/* eyes / mouth */}
+                <text x="48"  y="56" textAnchor="middle" fontSize="11" fill="#00c8ff" fontFamily="monospace" opacity="0.9">{face.el}</text>
+                <text x="72"  y="56" textAnchor="middle" fontSize="11" fill="#00c8ff" fontFamily="monospace" opacity="0.9">{face.er}</text>
+                <text x="60"  y="67" textAnchor="middle" fontSize="9"  fill="#00c8ff" fontFamily="monospace" opacity="0.7">{face.m}</text>
+                {/* corner reflection */}
+                <rect x="32" y="28" width="8" height="2" rx="1" fill="#ffffff" opacity="0.06"/>
+                <rect x="32" y="28" width="2" height="6" rx="1" fill="#ffffff" opacity="0.06"/>
+
+                {/* neck */}
+                <rect x="55" y="82" width="10" height="12" rx="1" fill="#030c1c"/>
+
+                {/* torso — slim */}
+                <rect x="38" y="94" width="44" height="58" rx="4" fill="#040e22" stroke="#0d3a6e" strokeWidth="1.2"/>
+                {/* chest detail line */}
+                <line x1="60" y1="104" x2="60" y2="140" stroke="#0a2a50" strokeWidth="0.8"/>
+                {/* chest glow dot */}
+                <circle cx="60" cy="114" r="3" fill="#00c8ff" opacity="0.5"/>
+                <circle cx="60" cy="114" r="5" fill="none" stroke="#00c8ff" strokeWidth="0.5" opacity="0.3"/>
+
+                {/* arms — long and thin */}
+                <rect x="18" y="96" width="20" height="6" rx="3" fill="#040e22" stroke="#0d3a6e" strokeWidth="1"/>
+                <rect x="82" y="96" width="20" height="6" rx="3" fill="#040e22" stroke="#0d3a6e" strokeWidth="1"/>
+                {/* hands */}
+                <ellipse cx="14" cy="99" rx="5" ry="4" fill="#040e22" stroke="#0d3a6e" strokeWidth="1"/>
+                <ellipse cx="106" cy="99" rx="5" ry="4" fill="#040e22" stroke="#0d3a6e" strokeWidth="1"/>
+
+                {/* legs — long and slim */}
+                <rect x="46" y="152" width="10" height="56" rx="3" fill="#040e22" stroke="#0d3a6e" strokeWidth="1"/>
+                <rect x="64" y="152" width="10" height="56" rx="3" fill="#040e22" stroke="#0d3a6e" strokeWidth="1"/>
+                {/* feet */}
+                <ellipse cx="51" cy="208" rx="10" ry="5" fill="#020a18" stroke="#0a2a50" strokeWidth="1"/>
+                <ellipse cx="69" cy="208" rx="10" ry="5" fill="#020a18" stroke="#0a2a50" strokeWidth="1"/>
               </svg>
               {pet.mood === 'SLEEPING' && (
                 <div className="t-zzz-group">
@@ -506,7 +533,7 @@ const CSS = `
 
   /* SVG character */
   .pet-svg {
-    width: 180px; height: 220px;
+    width: 140px; height: 280px;
     cursor: pointer; user-select: none;
     -webkit-tap-highlight-color: transparent;
     filter: drop-shadow(0 0 10px var(--t-glow));
