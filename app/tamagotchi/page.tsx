@@ -98,9 +98,13 @@ export default function TamagotchiPage() {
       })
       const data = await res.json()
       if (res.ok) {
-        setServerOnline(!!data.piOnline)
-        setLocalClicks(data.clicks); saveClicks(data.clicks)
-        setMyRank(data.rank)
+        const online = !!data.piOnline
+        setServerOnline(online)
+        if (online) {
+          // only trust cumulative count from the Pi — mock returns batch size which would reset the counter
+          setLocalClicks(data.clicks); saveClicks(data.clicks)
+          setMyRank(data.rank)
+        }
         if (data.pet) setPet(data.pet)
         setSyncNote('')
       }
@@ -167,10 +171,13 @@ export default function TamagotchiPage() {
       })
       const data = await res.json()
       if (!res.ok) { setAliasError(data.error || 'Error'); return }
-      setLocalClicks(data.clicks ?? 0); saveClicks(data.clicks ?? 0)
-      setMyRank(data.rank ?? null)
+      const online = !!data.piOnline
+      setServerOnline(online)
+      if (online) {
+        setLocalClicks(data.clicks ?? 0); saveClicks(data.clicks ?? 0)
+        setMyRank(data.rank ?? null)
+      }
       if (data.pet) setPet(data.pet)
-      setServerOnline(!!data.piOnline)
     } catch {
       setServerOnline(false)
       setPet(MOCK_PET)
@@ -196,9 +203,12 @@ export default function TamagotchiPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ alias: savedAlias }),
       }).then(r => r.json()).then(d => {
-        setServerOnline(!!d.piOnline)
-        setLocalClicks(d.clicks ?? 0); saveClicks(d.clicks ?? 0)
-        setMyRank(d.rank ?? null)
+        const online = !!d.piOnline
+        setServerOnline(online)
+        if (online) {
+          setLocalClicks(d.clicks ?? 0); saveClicks(d.clicks ?? 0)
+          setMyRank(d.rank ?? null)
+        }
         if (d.pet) setPet(d.pet)
       }).catch(() => { setServerOnline(false); setPet(MOCK_PET) })
     }
