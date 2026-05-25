@@ -332,6 +332,101 @@ function drawRandomChannel(ctx: CanvasRenderingContext2D, idx: number, frame: nu
   }
 }
 
+// ── Signal map ───────────────────────────────────────────────
+// [lat, lon] center of each country (equirectangular projection)
+const COUNTRY_POS: Record<string, [number, number]> = {
+  US:[-97,38], CA:[-96,60], MX:[-102,24], BR:[-53,-10], AR:[-64,-34],
+  CL:[-71,-35], CO:[-74,4],  PE:[-76,-10], VE:[-66,8],
+  GB:[-2,54],  FR:[2,46],   DE:[10,51],  ES:[-4,40],  IT:[12,43],
+  PT:[-8,39],  NL:[5,52],   BE:[4,51],   SE:[15,62],  NO:[10,64],
+  DK:[10,56],  FI:[26,64],  PL:[20,52],  CZ:[15,50],  AT:[14,47],
+  CH:[8,47],   GR:[22,39],  RO:[25,46],  HU:[19,47],
+  RU:[100,60], UA:[32,49],  TR:[35,39],
+  SA:[45,24],  AE:[54,24],  IL:[35,31],  IR:[53,32],
+  CN:[105,35], JP:[138,36], KR:[128,37], IN:[77,20],  PK:[70,30],
+  BD:[90,24],  ID:[118,-5], PH:[122,12], TH:[101,15], VN:[108,16],
+  MY:[110,3],  SG:[104,1],  TW:[121,24],
+  ZA:[25,-30], NG:[8,9],    EG:[30,27],  KE:[37,-1],  MA:[-7,32],
+  GH:[-2,8],   ET:[40,9],   TZ:[35,-6],
+  AU:[134,-25],NZ:[172,-41],
+};
+
+function latLonToXY(lat: number, lon: number, W: number, H: number): [number, number] {
+  return [((lon + 180) / 360) * W, ((90 - lat) / 180) * H];
+}
+
+function SignalMap({ data }: { data: Record<string, number> }) {
+  const ref  = useRef<HTMLCanvasElement>(null);
+  const rafR = useRef(0);
+
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d")!;
+    const W = canvas.width, H = canvas.height;
+    const entries = Object.entries(data);
+    const maxCount = entries.length ? Math.max(1, ...entries.map(([, v]) => v)) : 1;
+    let frame = 0;
+
+    function draw() {
+      frame++;
+      ctx.fillStyle = "#020408";
+      ctx.fillRect(0, 0, W, H);
+
+      // Graticule
+      ctx.strokeStyle = "#060e18";
+      ctx.lineWidth = 0.5;
+      for (let gx = 0; gx <= W; gx += W / 6) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
+      for (let gy = 0; gy <= H; gy += H / 3) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
+
+      // Region hints
+      ctx.font = "6px monospace";
+      ctx.fillStyle = "#0c1c2a";
+      ctx.textAlign = "center";
+      [["AM",70,80],["EU",148,58],["AF",155,98],["AS",215,68],["OC",242,118]] .forEach(([l,x,y]) => ctx.fillText(String(l), Number(x), Number(y)));
+
+      // Dim dots — countries with no signal
+      Object.entries(COUNTRY_POS).forEach(([code, [lon, lat]]) => {
+        if (data[code]) return;
+        const [x, y] = latLonToXY(lat, lon, W, H);
+        ctx.fillStyle = "#0e2030";
+        ctx.beginPath(); ctx.arc(x, y, 1.2, 0, Math.PI * 2); ctx.fill();
+      });
+
+      // Active dots — pulse
+      entries.forEach(([code, count]) => {
+        const pos = COUNTRY_POS[code];
+        if (!pos) return;
+        const [lon, lat] = pos;
+        const [x, y] = latLonToXY(lat, lon, W, H);
+        const ratio = count / maxCount;
+        const pulse = 0.72 + Math.sin(frame * 0.055 + x * 0.08) * 0.28;
+        const size  = 1.5 + ratio * 3.5;
+        const alpha = (0.45 + ratio * 0.55) * pulse;
+
+        const g = ctx.createRadialGradient(x, y, 0, x, y, size * 4.5);
+        g.addColorStop(0, `rgba(42,144,200,${(alpha * 0.55).toFixed(3)})`);
+        g.addColorStop(1, "rgba(42,144,200,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(x, y, size * 4.5, 0, Math.PI * 2); ctx.fill();
+
+        ctx.fillStyle = `rgba(100,200,240,${alpha.toFixed(3)})`;
+        ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.fill();
+      });
+
+      rafR.current = requestAnimationFrame(draw);
+    }
+
+    rafR.current = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(rafR.current);
+  }, [data]);
+
+  return (
+    <canvas ref={ref} width={280} height={140}
+      style={{ width: "100%", height: "auto", display: "block" }} />
+  );
+}
+
 // ── Name picker ──────────────────────────────────────────────
 
 const CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -486,6 +581,7 @@ export function EyeTV() {
   const [hype, setHype] = useState(0);
   const [myScore, setMyScore] = useState(0);
   const [leaderboard, setLeaderboard] = useState<{ alias: string; clicks: number }[]>([]);
+  const [signalMap, setSignalMap] = useState<Record<string, number>>({});
 
   const fetchHype = useCallback(async () => {
     try {
@@ -508,6 +604,14 @@ export function EyeTV() {
           clicks: Number(u.clicks),
         })));
       }
+    } catch {}
+  }, []);
+
+  const fetchSignalMap = useCallback(async () => {
+    try {
+      const r = await fetch("/api/signalmap");
+      const d = await r.json();
+      if (d.countries && typeof d.countries === "object") setSignalMap(d.countries);
     } catch {}
   }, []);
 
@@ -539,11 +643,13 @@ export function EyeTV() {
     fetchHype();
     fetchLeaderboard();
     fetchMyScore();
+    fetchSignalMap();
     const hypeId = setInterval(fetchHype, 15_000);
     const lbId   = setInterval(fetchLeaderboard, 30_000);
     const myId   = setInterval(fetchMyScore, 30_000);
-    return () => { clearInterval(hypeId); clearInterval(lbId); clearInterval(myId); };
-  }, [fetchHype, fetchLeaderboard, fetchMyScore]);
+    const mapId  = setInterval(fetchSignalMap, 60_000);
+    return () => { clearInterval(hypeId); clearInterval(lbId); clearInterval(myId); clearInterval(mapId); };
+  }, [fetchHype, fetchLeaderboard, fetchMyScore, fetchSignalMap]);
 
   // Batch flush — sends accumulated clicks to API every 250ms
   useEffect(() => {
@@ -896,6 +1002,18 @@ export function EyeTV() {
             ))}
           </div>
         )}
+
+        {/* Signal map */}
+        <div style={{ marginTop: 4 }}>
+          <p style={{
+            fontFamily: "'Press Start 2P', monospace", fontSize: 6,
+            color: "#1a3040", letterSpacing: "0.25em",
+            textAlign: "center", margin: "0 0 6px",
+          }}>— LIVE SIGNAL —</p>
+          <div style={{ border: "1px solid #0a1820", overflow: "hidden" }}>
+            <SignalMap data={signalMap} />
+          </div>
+        </div>
       </div>
     </div>
   );
