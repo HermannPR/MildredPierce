@@ -460,14 +460,6 @@ export default function Home() {
               />
             </div>
 
-            {/* Tagline — large, visible */}
-            <p
-              className="font-display uppercase select-none"
-              style={{ color: STEEL, letterSpacing: "0.35em", fontSize: "clamp(0.6rem, 1.1vw, 0.78rem)", marginTop: "0.7rem" }}
-            >
-              Enter the signal.
-            </p>
-
             {/* Release line */}
             <p
               className="font-display uppercase select-none"
