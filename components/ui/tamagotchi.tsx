@@ -347,25 +347,30 @@ function NamePicker({ onConfirm }: { onConfirm: (nick: string) => void }) {
     return () => clearInterval(id);
   }, []);
 
-  // Keyboard input
+  // Keyboard input — type 4 letters to auto-confirm
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (/^[a-zA-Z]$/.test(e.key)) {
         const letter = e.key.toUpperCase();
+        let nextCursor = cursor;
+        let nextChars: string[] = [];
         setChars(prev => {
           const next = [...prev];
           next[cursor] = letter;
+          nextChars = next;
           return next;
         });
-        setCursor(c => Math.min(c + 1, 3));
+        nextCursor = cursor + 1;
+        if (nextCursor >= 4) {
+          // All 4 letters typed — auto-confirm after state settles
+          setTimeout(() => onConfirm(nextChars.join("")), 80);
+        } else {
+          setCursor(nextCursor);
+        }
       } else if (e.key === "Backspace") {
-        setChars(prev => {
-          const next = [...prev];
-          const slot = cursor > 0 && prev[cursor] === "A" ? cursor - 1 : cursor;
-          next[slot] = "A";
-          return next;
-        });
-        setCursor(c => Math.max(c - 1, 0));
+        const slot = cursor > 0 && chars[cursor] === "A" ? cursor - 1 : cursor;
+        setChars(prev => { const next = [...prev]; next[slot] = "A"; return next; });
+        setCursor(Math.max(slot, 0));
       } else if (e.key === "Enter") {
         onConfirm(chars.join(""));
       }
@@ -406,7 +411,7 @@ function NamePicker({ onConfirm }: { onConfirm: (nick: string) => void }) {
     }}>
       <p style={{
         fontFamily: "'Press Start 2P', monospace",
-        fontSize: 7, color: "#3a6888", letterSpacing: "0.2em",
+        fontSize: 9, color: "#3a6888", letterSpacing: "0.2em",
         margin: 0, textShadow: "0 0 10px rgba(42,112,144,0.5)",
       }}>CALL SIGN</p>
 
@@ -419,11 +424,11 @@ function NamePicker({ onConfirm }: { onConfirm: (nick: string) => void }) {
               <div
                 onPointerDown={() => setCursor(slot)}
                 style={{
-                  width: 34, height: 38, background: active ? "#0d1820" : "#080d14",
+                  width: 40, height: 46, background: active ? "#0d1820" : "#080d14",
                   border: `1px solid ${active ? "#2a5a80" : "#1a3a50"}`,
                   boxShadow: active ? "0 0 8px rgba(42,90,128,0.5)" : "none",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontFamily: "'Press Start 2P', monospace", fontSize: 16,
+                  fontFamily: "'Press Start 2P', monospace", fontSize: 20,
                   color: active ? "#7ab8d8" : "#5a9ab8",
                   textShadow: active ? "0 0 10px rgba(122,184,216,0.7)" : "0 0 6px rgba(90,154,184,0.4)",
                   cursor: "pointer", position: "relative",
@@ -451,8 +456,8 @@ function NamePicker({ onConfirm }: { onConfirm: (nick: string) => void }) {
           marginTop: 2, background: "#0a1820",
           border: "1px solid #1a4060", cursor: "pointer",
           fontFamily: "'Press Start 2P', monospace",
-          fontSize: 8, color: "#3a8090", letterSpacing: "0.2em",
-          padding: "7px 16px", textShadow: "0 0 8px rgba(42,128,144,0.5)",
+          fontSize: 9, color: "#3a8090", letterSpacing: "0.2em",
+          padding: "10px 20px", textShadow: "0 0 8px rgba(42,128,144,0.5)",
           boxShadow: "0 0 12px rgba(0,60,140,0.25)", touchAction: "none",
         }}
       >
