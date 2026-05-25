@@ -337,18 +337,55 @@ function drawRandomChannel(ctx: CanvasRenderingContext2D, idx: number, frame: nu
 const CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 function NamePicker({ onConfirm }: { onConfirm: (nick: string) => void }) {
-  const [chars, setChars] = useState([0, 0, 0, 0]);
+  const [chars, setChars] = useState(["A","A","A","A"]);
+  const [cursor, setCursor] = useState(0); // active slot
+  const [blink, setBlink] = useState(true);
+
+  // Cursor blink
+  useEffect(() => {
+    const id = setInterval(() => setBlink(b => !b), 530);
+    return () => clearInterval(id);
+  }, []);
+
+  // Keyboard input
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (/^[a-zA-Z]$/.test(e.key)) {
+        const letter = e.key.toUpperCase();
+        setChars(prev => {
+          const next = [...prev];
+          next[cursor] = letter;
+          return next;
+        });
+        setCursor(c => Math.min(c + 1, 3));
+      } else if (e.key === "Backspace") {
+        setChars(prev => {
+          const next = [...prev];
+          const slot = cursor > 0 && prev[cursor] === "A" ? cursor - 1 : cursor;
+          next[slot] = "A";
+          return next;
+        });
+        setCursor(c => Math.max(c - 1, 0));
+      } else if (e.key === "Enter") {
+        onConfirm(chars.join(""));
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [cursor, chars, onConfirm]);
 
   const cycle = (slot: number, dir: 1 | -1) => {
     if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(5);
+    setCursor(slot);
     setChars(prev => {
       const next = [...prev];
-      next[slot] = (next[slot] + dir + CHARSET.length) % CHARSET.length;
+      const idx = (CHARSET.indexOf(prev[slot]) + dir + CHARSET.length) % CHARSET.length;
+      next[slot] = CHARSET[idx];
       return next;
     });
   };
 
-  const confirm = () => onConfirm(chars.map(i => CHARSET[i]).join(""));
+  const confirm = () => onConfirm(chars.join(""));
 
   const btnStyle: React.CSSProperties = {
     background: "none", border: "none", cursor: "pointer",
@@ -363,7 +400,7 @@ function NamePicker({ onConfirm }: { onConfirm: (nick: string) => void }) {
       background: "#050708",
       display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center",
-      gap: 14,
+      gap: 12,
       border: "1px solid #0e1c28",
       boxShadow: "0 0 30px rgba(0,60,140,0.35)",
     }}>
@@ -374,21 +411,38 @@ function NamePicker({ onConfirm }: { onConfirm: (nick: string) => void }) {
       }}>CALL SIGN</p>
 
       <div style={{ display: "flex", gap: 8 }}>
-        {[0,1,2,3].map(slot => (
-          <div key={slot} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-            <button onPointerDown={() => cycle(slot, -1)} style={btnStyle}>▲</button>
-            <div style={{
-              width: 34, height: 38, background: "#080d14",
-              border: "1px solid #1a3a50",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontFamily: "'Press Start 2P', monospace", fontSize: 16,
-              color: "#5a9ab8", textShadow: "0 0 8px rgba(90,154,184,0.6)",
-            }}>
-              {CHARSET[chars[slot]]}
+        {[0,1,2,3].map(slot => {
+          const active = slot === cursor;
+          return (
+            <div key={slot} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+              <button onPointerDown={() => cycle(slot, -1)} style={btnStyle}>▲</button>
+              <div
+                onPointerDown={() => setCursor(slot)}
+                style={{
+                  width: 34, height: 38, background: active ? "#0d1820" : "#080d14",
+                  border: `1px solid ${active ? "#2a5a80" : "#1a3a50"}`,
+                  boxShadow: active ? "0 0 8px rgba(42,90,128,0.5)" : "none",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontFamily: "'Press Start 2P', monospace", fontSize: 16,
+                  color: active ? "#7ab8d8" : "#5a9ab8",
+                  textShadow: active ? "0 0 10px rgba(122,184,216,0.7)" : "0 0 6px rgba(90,154,184,0.4)",
+                  cursor: "pointer", position: "relative",
+                }}>
+                {chars[slot]}
+                {/* blinking underscore cursor */}
+                {active && (
+                  <span style={{
+                    position: "absolute", bottom: 5, left: "50%",
+                    transform: "translateX(-50%)",
+                    width: 14, height: 2,
+                    background: blink ? "#5a9ab8" : "transparent",
+                  }} />
+                )}
+              </div>
+              <button onPointerDown={() => cycle(slot, 1)} style={btnStyle}>▼</button>
             </div>
-            <button onPointerDown={() => cycle(slot, 1)} style={btnStyle}>▼</button>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <button
@@ -398,7 +452,7 @@ function NamePicker({ onConfirm }: { onConfirm: (nick: string) => void }) {
           border: "1px solid #1a4060", cursor: "pointer",
           fontFamily: "'Press Start 2P', monospace",
           fontSize: 8, color: "#3a8090", letterSpacing: "0.2em",
-          padding: "8px 18px", textShadow: "0 0 8px rgba(42,128,144,0.5)",
+          padding: "7px 16px", textShadow: "0 0 8px rgba(42,128,144,0.5)",
           boxShadow: "0 0 12px rgba(0,60,140,0.25)", touchAction: "none",
         }}
       >
