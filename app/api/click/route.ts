@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { MOCK_PET } from "../leaderboard/route";
 
 const PI_API = process.env.NEXT_PUBLIC_TAMAGOTCHI_API ?? "";
 
@@ -23,5 +22,5 @@ export async function POST(req: NextRequest) {
     } catch { /* fall through */ }
   }
 
-  return NextResponse.json({ alias, clicks: count, rank: null, pet: MOCK_PET, piOnline: false });
+  return NextResponse.json({ alias, clicks: count, rank: null, piOnline: false });
 }
