@@ -5,6 +5,8 @@ const PX          = 6;
 const HYPE_GOAL   = 20_000;
 const COOLDOWN_MS = 800;
 const MILESTONES  = [5_000, 10_000, 15_000, 20_000];
+const RAND_CH_COUNT = 7;   // number of random channel types
+const RAND_CH_PROB  = 0.18; // chance per click
 
 const C = {
   bg:       "#050708",
@@ -59,6 +61,8 @@ const LOOK_SEQ: [LookDir, number][] = [
   ["u", 28],  ["ur", 22], ["c", 100], ["dl", 24], ["c", 75],
   ["u", 22],  ["c", 110],
 ];
+
+// ── Draw helpers ─────────────────────────────────────────────
 
 function drawMonitor(ctx: CanvasRenderingContext2D) {
   rect(ctx, 2, 1, 28, 26, C.bezel);
@@ -126,10 +130,11 @@ function drawStaticBurst(ctx: CanvasRenderingContext2D) {
   }
 }
 
+// ── Milestone channels (long, triggered at hype thresholds) ──
+
 function drawChannelCard(ctx: CanvasRenderingContext2D, chIdx: number, timer: number) {
   switch (chIdx) {
     case 0: {
-      // 5k — horizontal SMPTE bars
       const bars = ["#c89000","#c8c800","#00c8c8","#00c820","#0020c8","#c800c8","#c80020"];
       for (let y = 3; y < 23; y++) {
         const b = bars[Math.floor((y - 3) * bars.length / 20) % bars.length];
@@ -138,7 +143,6 @@ function drawChannelCard(ctx: CanvasRenderingContext2D, chIdx: number, timer: nu
       break;
     }
     case 1: {
-      // 10k — vertical bars
       const bars = ["#c80020","#c87000","#c8c800","#00b820","#0028c8","#6000c8"];
       for (let x = 4; x < 28; x++) {
         const b = bars[Math.floor((x - 4) * bars.length / 24) % bars.length];
@@ -147,7 +151,6 @@ function drawChannelCard(ctx: CanvasRenderingContext2D, chIdx: number, timer: nu
       break;
     }
     case 2: {
-      // 15k — checkerboard with concentric rings
       for (let y = 3; y < 23; y++) {
         for (let x = 4; x < 28; x++) {
           const even = ((x - 4) + (y - 3)) % 2 === 0;
@@ -155,16 +158,13 @@ function drawChannelCard(ctx: CanvasRenderingContext2D, chIdx: number, timer: nu
         }
       }
       const cx = 16, cy = 13;
-      [[8,"#1a3040"],[5,"#2a4858"],[2,"#6a8ea8"]] .forEach(([r, rc]) => {
-        for (let y = 3; y < 23; y++) for (let x = 4; x < 28; x++) {
-          if (Math.round(Math.sqrt((x-cx)**2+(y-cy)**2)) === r)
-            px(ctx, x, y, rc as string);
-        }
+      ([[8,"#1a3040"],[5,"#2a4858"],[2,"#6a8ea8"]] as [number,string][]).forEach(([r, rc]) => {
+        for (let y = 3; y < 23; y++) for (let x = 4; x < 28; x++)
+          if (Math.round(Math.sqrt((x-cx)**2+(y-cy)**2)) === r) px(ctx, x, y, rc);
       });
       break;
     }
     case 3: {
-      // 20k goal — deep pulsing blue
       const pulse = Math.sin((150 - timer) * 0.12) * 0.5 + 0.5;
       const b = Math.round(40 + pulse * 120);
       const g = Math.round(pulse * 45);
@@ -180,7 +180,95 @@ function drawChannelCard(ctx: CanvasRenderingContext2D, chIdx: number, timer: nu
   }
 }
 
+// ── Random channels (short, triggered ~18% chance on click) ──
+
+function drawRandomChannel(ctx: CanvasRenderingContext2D, idx: number, frame: number) {
+  const ch = idx % RAND_CH_COUNT;
+  switch (ch) {
+    case 0: {
+      // Pure white/dark noise — sharp static
+      for (let y = 3; y < 23; y++)
+        for (let x = 4; x < 28; x++)
+          px(ctx, x, y, Math.random() > 0.5 ? "#c8d0d8" : "#010306");
+      break;
+    }
+    case 1: {
+      // Blue test tone — flat solid with center pip
+      ctx.fillStyle = "#080e18";
+      ctx.fillRect(4*PX, 3*PX, 24*PX, 20*PX);
+      px(ctx, 15, 12, "#6a98c0"); px(ctx, 16, 12, "#6a98c0"); px(ctx, 17, 12, "#6a98c0");
+      px(ctx, 15, 13, "#6a98c0"); px(ctx, 16, 13, "#8ab8d0"); px(ctx, 17, 13, "#6a98c0");
+      px(ctx, 15, 14, "#6a98c0"); px(ctx, 16, 14, "#6a98c0"); px(ctx, 17, 14, "#6a98c0");
+      break;
+    }
+    case 2: {
+      // Snowstorm — rolling divider between dark top and static bottom
+      const divY = 3 + Math.floor((frame * 0.35) % 20);
+      for (let y = 3; y < 23; y++) {
+        for (let x = 4; x < 28; x++) {
+          if (y < divY) px(ctx, x, y, "#020408");
+          else px(ctx, x, y, Math.random() > 0.45 ? "#98a0a8" : "#040810");
+        }
+      }
+      break;
+    }
+    case 3: {
+      // Rolling horizontal interference bars
+      for (let y = 3; y < 23; y++) {
+        const band = Math.floor((frame * 0.6 + (y - 3) * 1.5) % 16);
+        const inBand = band < 3;
+        for (let x = 4; x < 28; x++)
+          px(ctx, x, y, inBand ? "#050c14" : (Math.random() > 0.75 ? "#182028" : "#040810"));
+      }
+      break;
+    }
+    case 4: {
+      // MILDRED PIERCE title card — the rare one
+      rect(ctx, 4, 3, 24, 20, "#020508");
+      rect(ctx, 4, 3, 24, 2, "#0a1820");   // top bar
+      rect(ctx, 4, 21, 24, 2, "#0a1820");  // bottom bar
+      // horizontal rule lines
+      rect(ctx, 5, 8, 22, 1, "#0e1c28");
+      rect(ctx, 5, 18, 22, 1, "#0e1c28");
+      ctx.save();
+      ctx.font = "bold 7px monospace";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#5a8098";
+      ctx.fillText("MILDRED", 96, 72);
+      ctx.fillStyle = "#3a5870";
+      ctx.fillText("PIERCE", 96, 84);
+      ctx.restore();
+      break;
+    }
+    case 5: {
+      // Vertical scan lines shifting left
+      for (let x = 4; x < 28; x++) {
+        const phase = ((x - 4) * 3 + Math.floor(frame * 0.8)) % 8;
+        const bright = phase < 2;
+        for (let y = 3; y < 23; y++)
+          px(ctx, x, y, bright ? "#0e1c28" : "#020408");
+      }
+      break;
+    }
+    case 6: {
+      // NO SIGNAL card
+      rect(ctx, 4, 3, 24, 20, "#020406");
+      ctx.save();
+      ctx.font = "6px monospace";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#142030";
+      ctx.fillText("NO SIGNAL", 96, 76);
+      ctx.restore();
+      // corner marks
+      px(ctx, 4, 3, "#0a1420");  px(ctx, 27, 3, "#0a1420");
+      px(ctx, 4, 22, "#0a1420"); px(ctx, 27, 22, "#0a1420");
+      break;
+    }
+  }
+}
+
 // ── Component ────────────────────────────────────────────────
+
 export function EyeTV() {
   const canvasRef   = useRef<HTMLCanvasElement>(null);
   const stateRef    = useRef<State>("idle");
@@ -195,10 +283,15 @@ export function EyeTV() {
   const lookStep    = useRef(0);
   const lookCount   = useRef(LOOK_SEQ[0][1]);
 
+  // Milestone channels (long, at hype thresholds)
   const channelTimerRef = useRef(0);
   const channelIdxRef   = useRef(0);
   const passedRef       = useRef<Set<number>>(new Set());
   const hypeRef         = useRef(0);
+
+  // Random channels (short, ~18% per click)
+  const randChTimerRef = useRef(0);
+  const randChIdxRef   = useRef(0);
 
   const [hype, setHype] = useState(0);
   const [leaderboard, setLeaderboard] = useState<{ alias: string; clicks: number }[]>([]);
@@ -283,13 +376,14 @@ export function EyeTV() {
       ctx.fillRect(0, 0, W, H);
       drawMonitor(ctx);
 
+      // Priority: milestone channel > random channel > normal states
       if (channelTimerRef.current > 0) {
-        if (channelTimerRef.current > 120) {
-          drawStaticBurst(ctx);
-        } else {
-          drawChannelCard(ctx, channelIdxRef.current, channelTimerRef.current);
-        }
+        if (channelTimerRef.current > 120) drawStaticBurst(ctx);
+        else drawChannelCard(ctx, channelIdxRef.current, channelTimerRef.current);
         channelTimerRef.current--;
+      } else if (randChTimerRef.current > 0) {
+        drawRandomChannel(ctx, randChIdxRef.current, f);
+        randChTimerRef.current--;
       } else if (st === "glitch") {
         noiseRef.current.forEach(n => px(ctx, n.x, n.y, n.c));
       } else if (st === "sleep") {
@@ -324,17 +418,25 @@ export function EyeTV() {
     lastClick.current = Date.now();
     setTimeout(() => { cooldownRef.current = false; }, COOLDOWN_MS);
 
+    // Milestone check
     const prev = hypeRef.current;
     const next = prev + 1;
     hypeRef.current = next;
-
+    let milestoneTriggered = false;
     for (let i = 0; i < MILESTONES.length; i++) {
       if (prev < MILESTONES[i] && next >= MILESTONES[i] && !passedRef.current.has(i)) {
         passedRef.current.add(i);
         channelTimerRef.current = 150;
         channelIdxRef.current = i;
+        milestoneTriggered = true;
         break;
       }
+    }
+
+    // Random channel flip — ~18% chance, skips if milestone just triggered
+    if (!milestoneTriggered && channelTimerRef.current <= 0 && Math.random() < RAND_CH_PROB) {
+      randChTimerRef.current = 30 + Math.floor(Math.random() * 28); // 30–57 frames
+      randChIdxRef.current = Math.floor(Math.random() * RAND_CH_COUNT);
     }
 
     setHype(h => h + 1);
