@@ -23,6 +23,18 @@ export function EyeTVPage() {
           0%, 100% { opacity: 0.35; }
           50%       { opacity: 0.65; }
         }
+        @keyframes tap-flash {
+          0%   { opacity: 0.55; box-shadow: inset 0 0 18px rgba(42,128,200,0.5); }
+          100% { opacity: 0;    box-shadow: inset 0 0 0px transparent; }
+        }
+        @keyframes float-up {
+          0%   { opacity: 1; transform: translateX(-50%) translateY(0)   scale(1.1); }
+          100% { opacity: 0; transform: translateX(-50%) translateY(-44px) scale(0.8); }
+        }
+        @keyframes hint-pulse {
+          0%, 100% { opacity: 0.5; }
+          50%       { opacity: 0.9; }
+        }
         .eyetv-canvas-wrap canvas {
           animation: crt-flicker 10s infinite;
           filter:
@@ -92,20 +104,6 @@ export function EyeTVPage() {
         <div className="eyetv-canvas-wrap" style={{ position: "relative", zIndex: 10 }}>
           <EyeTV />
         </div>
-
-        {/* Tap hint */}
-        <p style={{
-          fontFamily: "'Press Start 2P', monospace",
-          fontSize: 6,
-          color: "#2a5070",
-          letterSpacing: "0.3em",
-          marginTop: 18,
-          position: "relative",
-          zIndex: 10,
-          animation: "tap-pulse 2.5s ease-in-out infinite",
-        }}>
-          TAP TO HYPE
-        </p>
 
         {/* Bottom scan artifact */}
         <div style={{

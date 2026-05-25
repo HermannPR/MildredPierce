@@ -685,15 +685,20 @@ export function EyeTV() {
     }
 
     setHype(h => h + 1);
+    setTapCount(c => c + 1);
     pendingRef.current++;
   }, []);
+
+  const [tapCount, setTapCount] = useState(0);
 
   const pct = Math.min((hype / HYPE_GOAL) * 100, 100);
   const RANK_COLORS = ["#5a9ab8", "#3a7090", "#2a5068", "#1e3a4a"];
   const RANK_PREFIX = ["#1", "#2", "#3", "#4"];
-
-  // Milestone labels for progress bar markers
   const milestoneLabels = ["5K", "10K", "15K", "20K"];
+
+  const nextMilestone = MILESTONES.find(m => hype < m);
+  const toNext = nextMilestone ? nextMilestone - hype : null;
+  const nextLabel = nextMilestone ? (nextMilestone >= 1000 ? `${nextMilestone / 1000}K` : String(nextMilestone)) : null;
 
   const handleConfirm = useCallback((nick: string) => {
     nickRef.current = nick;
@@ -711,109 +716,141 @@ export function EyeTV() {
     );
   }
 
+  const W = "clamp(192px, 72vw, 280px)";
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, userSelect: "none" }}>
-      <canvas
-        ref={canvasRef}
-        width={192}
-        height={192}
-        onPointerDown={handleClick}
-        style={{
-          cursor: "crosshair", imageRendering: "pixelated", display: "block", touchAction: "none",
-          width: "clamp(192px, 72vw, 280px)", height: "clamp(192px, 72vw, 280px)",
-        }}
-      />
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, userSelect: "none" }}>
 
-      <div style={{ width: "clamp(210px, 72vw, 280px)", display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* Canvas + overlays */}
+      <div style={{ position: "relative", width: W, height: W, flexShrink: 0 }}
+        onPointerDown={handleClick}>
+        <canvas
+          ref={canvasRef}
+          width={192} height={192}
+          style={{ cursor: "crosshair", imageRendering: "pixelated", display: "block", touchAction: "none", width: "100%", height: "100%" }}
+        />
 
-        {/* Hype progress bar with milestone markers */}
-        <div style={{ position: "relative", width: "100%" }}>
+        {/* Tap flash — re-triggers each tap via key */}
+        {tapCount > 0 && (
+          <div key={tapCount} style={{
+            position: "absolute", inset: 0, pointerEvents: "none",
+            animation: "tap-flash 0.28s ease-out forwards",
+            border: "1px solid rgba(90,154,200,0.6)",
+          }} />
+        )}
+
+        {/* Floating +1 — rises and fades */}
+        {tapCount > 0 && (
+          <div key={`f${tapCount}`} style={{
+            position: "absolute", top: "28%", left: "50%",
+            pointerEvents: "none",
+            fontFamily: "'Press Start 2P', monospace",
+            fontSize: 11, color: "#5a9ab8",
+            textShadow: "0 0 10px rgba(90,154,184,0.7)",
+            animation: "float-up 0.55s ease-out forwards",
+          }}>+1</div>
+        )}
+
+        {/* First-visit hint — disappears after first tap */}
+        {tapCount === 0 && (
+          <div style={{
+            position: "absolute", inset: 0, pointerEvents: "none",
+            display: "flex", alignItems: "flex-end", justifyContent: "center",
+            paddingBottom: 10,
+          }}>
+            <span style={{
+              fontFamily: "'Press Start 2P', monospace",
+              fontSize: 7, color: "#3a7090", letterSpacing: "0.25em",
+              animation: "hint-pulse 1.6s ease-in-out infinite",
+            }}>TAP</span>
+          </div>
+        )}
+      </div>
+
+      <div style={{ width: W, display: "flex", flexDirection: "column", gap: 8 }}>
+
+        {/* Progress bar */}
+        <div>
           <div style={{ width: "100%", height: 6, background: "#0a0e14", borderRadius: 3, overflow: "hidden", position: "relative" }}>
             <div style={{
               position: "absolute", left: 0, top: 0, bottom: 0,
               width: `${pct}%`,
               background: "linear-gradient(90deg, #1a4060, #2a8090)",
               boxShadow: "0 0 10px rgba(42,128,144,0.7)",
-              borderRadius: 3,
-              transition: "width 0.3s ease",
+              borderRadius: 3, transition: "width 0.3s ease",
             }} />
           </div>
-          {/* Milestone tick marks */}
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5 }}>
             {milestoneLabels.map((label, i) => (
               <span key={i} style={{
-                fontFamily: "'Press Start 2P', monospace",
-                fontSize: 5,
-                color: hype >= MILESTONES[i] ? "#2a8090" : "#0e2030",
-                letterSpacing: "0.05em",
-              }}>
-                {label}
-              </span>
+                fontFamily: "'Press Start 2P', monospace", fontSize: 6,
+                color: hype >= MILESTONES[i] ? "#2a8090" : "#162030",
+              }}>{label}</span>
             ))}
           </div>
         </div>
 
         {/* Hype count */}
         <p style={{
-          fontFamily: "'Press Start 2P', monospace",
-          fontSize: 10,
-          color: "#3a6888",
-          letterSpacing: "0.10em",
-          textAlign: "center",
-          margin: "4px 0 0",
+          fontFamily: "'Press Start 2P', monospace", fontSize: 11,
+          color: "#3a6888", letterSpacing: "0.08em",
+          textAlign: "center", margin: 0,
           textShadow: "0 0 14px rgba(42,112,144,0.6)",
         }}>
-          {hype.toLocaleString()} <span style={{ color: "#1e3a4a", fontSize: 7 }}>/ {HYPE_GOAL.toLocaleString()}</span>
+          {hype.toLocaleString()}
+          <span style={{ color: "#1e3a4a", fontSize: 7 }}> / {HYPE_GOAL.toLocaleString()}</span>
         </p>
 
-        {/* Active nick + change */}
+        {/* Next unlock */}
+        {toNext !== null && (
+          <p style={{
+            fontFamily: "'Press Start 2P', monospace", fontSize: 6,
+            color: "#1e4a5a", letterSpacing: "0.1em",
+            textAlign: "center", margin: 0,
+          }}>
+            unlock ch.{(MILESTONES.indexOf(nextMilestone!) + 1)} in {toNext.toLocaleString()}
+          </p>
+        )}
+
+        {/* Divider */}
+        <div style={{ height: 1, background: "#0a1820", margin: "2px 0" }} />
+
+        {/* Nick + change */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{
-            fontFamily: "'Press Start 2P', monospace", fontSize: 7,
-            color: "#2a6888", letterSpacing: "0.12em",
+            fontFamily: "'Press Start 2P', monospace", fontSize: 8,
+            color: "#2a6888", letterSpacing: "0.1em",
             textShadow: "0 0 8px rgba(42,104,136,0.4)",
-          }}>
-            ▶ {nickRef.current}
-          </span>
+          }}>▶ {nickRef.current}</span>
           <button
             onPointerDown={() => { localStorage.removeItem("eyetv_nick"); setPhase("pick"); }}
             style={{
-              background: "none", border: "none", cursor: "pointer",
-              fontFamily: "'Press Start 2P', monospace", fontSize: 5,
-              color: "#1a3040", letterSpacing: "0.1em", touchAction: "none",
+              background: "none", border: "1px solid #0e2030", cursor: "pointer",
+              fontFamily: "'Press Start 2P', monospace", fontSize: 6,
+              color: "#1e3a4a", letterSpacing: "0.1em", touchAction: "none",
+              padding: "4px 8px", borderRadius: 2,
             }}
-          >
-            change
-          </button>
+          >change</button>
         </div>
 
         {/* Leaderboard */}
         {leaderboard.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 0, marginTop: 4 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0, marginTop: 2 }}>
             <p style={{
-              fontFamily: "'Press Start 2P', monospace",
-              fontSize: 6,
-              color: "#1a3040",
-              letterSpacing: "0.25em",
-              textAlign: "center",
-              margin: "0 0 6px",
-            }}>
-              — TOP SIGNAL —
-            </p>
+              fontFamily: "'Press Start 2P', monospace", fontSize: 6,
+              color: "#1a3040", letterSpacing: "0.25em",
+              textAlign: "center", margin: "0 0 6px",
+            }}>— TOP SIGNAL —</p>
             {leaderboard.map((entry, i) => (
               <div key={i} style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                fontFamily: "'Press Start 2P', monospace",
-                fontSize: 8,
-                color: RANK_COLORS[i],
-                letterSpacing: "0.08em",
-                padding: "3px 0",
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                fontFamily: "'Press Start 2P', monospace", fontSize: 8,
+                color: RANK_COLORS[i], letterSpacing: "0.08em",
+                padding: "4px 0",
                 borderBottom: i < leaderboard.length - 1 ? "1px solid #0a1820" : "none",
                 textShadow: i === 0 ? "0 0 10px rgba(90,154,184,0.4)" : "none",
               }}>
-                <span style={{ color: RANK_COLORS[i], opacity: 0.7, fontSize: 6 }}>{RANK_PREFIX[i]}</span>
+                <span style={{ color: RANK_COLORS[i], opacity: 0.6, fontSize: 6 }}>{RANK_PREFIX[i]}</span>
                 <span style={{ flex: 1, paddingLeft: 6 }}>{entry.alias}</span>
                 <span>{entry.clicks.toLocaleString()}</span>
               </div>
