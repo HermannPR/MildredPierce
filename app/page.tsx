@@ -507,19 +507,7 @@ export default function Home() {
               />
             </div>
 
-            {/* Watch CTA — mobile only */}
-            <GlassButton
-              className="md:hidden self-start mt-4"
-              size="sm"
-              onClick={() => document.getElementById("music-video")?.scrollIntoView({ behavior: "smooth" })}
-            >
-              <span style={{ fontSize: "0.75rem" }}>▶</span>
-              <span className="font-display uppercase" style={{ letterSpacing: "0.20em", fontSize: "0.65rem" }}>
-                Play Track
-              </span>
-            </GlassButton>
-
-          </div>
+</div>
         </section>
       </div>
 
