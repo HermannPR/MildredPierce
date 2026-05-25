@@ -124,7 +124,7 @@ export default function Home() {
   const [smokeHue,  setSmokeHue]  = useState("#001840");
 
   // Dead pixel easter egg
-  const [pixelPos,     setPixelPos]     = useState({ x: 120, y: 120 });
+  const [pixelPos,     setPixelPos]     = useState({ x: 0, y: 0 });
   const [expandPhase,  setExpandPhase]  = useState<"idle" | "start" | "growing">("idle");
   const [expandOrigin, setExpandOrigin] = useState({ x: 0, y: 0 });
   const dirRef      = useRef({ dx: 1, dy: 1 });
@@ -154,29 +154,30 @@ export default function Home() {
   useEffect(() => {
     if (expandPhase !== "idle") return;
     const GRID = 32;
-    const STEP = 380; // ms per step — fast enough to clearly see grid jumps
+    const STEP = 380;
 
-    // Init position near bottom-right
+    // Start in the center of the viewport
     setPixelPos({
-      x: Math.floor((window.innerWidth  * 0.72) / GRID) * GRID,
-      y: Math.floor((window.innerHeight * 0.78) / GRID) * GRID,
+      x: Math.floor((window.innerWidth  * 0.50) / GRID) * GRID,
+      y: Math.floor((window.innerHeight * 0.45) / GRID) * GRID,
     });
 
     const step = () => {
       setPixelPos(prev => {
         let { dx, dy } = dirRef.current;
-        // ~20% chance to nudge direction
         if (Math.random() < 0.20) {
           if (Math.random() < 0.5) dx = -dx;
           else                     dy = -dy;
         }
         let x = prev.x + dx * GRID;
         let y = prev.y + dy * GRID;
-        // Bounce off viewport edges (leave margin for element size ~55×40)
-        const maxX = Math.floor((window.innerWidth  - 56) / GRID) * GRID;
-        const maxY = Math.floor((window.innerHeight - 42) / GRID) * GRID;
-        if (x < 0)    { x = 0;    dx =  1; }
-        if (y < 0)    { y = 0;    dy =  1; }
+        // Constrain to center band: 20–75% width, 18–72% height
+        const minX = Math.floor((window.innerWidth  * 0.20) / GRID) * GRID;
+        const minY = Math.floor((window.innerHeight * 0.18) / GRID) * GRID;
+        const maxX = Math.floor((window.innerWidth  * 0.75) / GRID) * GRID;
+        const maxY = Math.floor((window.innerHeight * 0.72) / GRID) * GRID;
+        if (x < minX) { x = minX; dx =  1; }
+        if (y < minY) { y = minY; dy =  1; }
         if (x > maxX) { x = maxX; dx = -1; }
         if (y > maxY) { y = maxY; dy = -1; }
         dirRef.current = { dx, dy };
