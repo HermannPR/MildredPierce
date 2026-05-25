@@ -50,20 +50,20 @@ const FRAG = `
                   fbm(st + 4.0 * q + vec2(8.3 - t * 0.126, 2.8)));
     float f = fbm(st + r);
 
-    // Warm color mapping: full red, suppress green/blue
-    float r_ch = f * f * f + 0.65 * f * f + 0.55 * f;
-    float g_ch = r_ch * 0.22;
-    float b_ch = r_ch * 0.05;
+    // Cool color mapping: full blue, suppress red/green
+    float b_ch = f * f * f + 0.65 * f * f + 0.55 * f;
+    float g_ch = b_ch * 0.22;
+    float r_ch = b_ch * 0.05;
 
     // Film grain
     float grain = random(uv + time * 0.07) * 0.15;
-    r_ch += grain;
+    r_ch += grain * 0.03;
     g_ch += grain * 0.18;
-    b_ch += grain * 0.03;
+    b_ch += grain;
 
     // Horizontal scanlines
     float scan = sin(uv.y * 520.0) * 0.025;
-    r_ch += scan;
+    b_ch += scan;
 
     // Vignette — stronger edges fade to black
     float vig = 1.0 - length(uv - 0.5) * 1.4;

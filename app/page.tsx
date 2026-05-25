@@ -198,7 +198,7 @@ export default function Home() {
         <WaveformVisualizer opacity={1} />
       </div>
 
-      {/* Fractal rings — vivid crimson ambient layer, breathing */}
+      {/* Fractal rings — electric blue ambient layer, breathing */}
       <div
         className="fixed inset-0 z-[4] pointer-events-none"
         style={{ mixBlendMode: "screen", animation: "bg-breathe 8s ease-in-out infinite" }}

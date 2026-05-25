@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react"
 
 const VERT = `attribute vec2 a_pos; void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }`
 
-// Julia-set fractal — vivid crimson, always-on
+// Julia-set fractal — electric blue, always-on
 const FRAG = `
   precision highp float;
   uniform vec2 resolution;
@@ -42,11 +42,11 @@ const FRAG = `
 
     float n = smooth_i / 80.0;
 
-    // Vivid crimson palette — pulse with time
+    // Electric blue palette — pulse with time
     float pulse = 0.5 + 0.5 * sin(t * 2.1 + n * 12.0);
-    float r = 0.9 + 0.1 * pulse;
-    float g = 0.04 + 0.08 * n * pulse;
-    float b = 0.02 + 0.04 * n;
+    float r = 0.02 + 0.04 * n;
+    float g = 0.08 + 0.16 * n * pulse;
+    float b = 0.9 + 0.1 * pulse;
 
     // Brightness ramp
     float bright = pow(n, 0.45) * 1.6;
