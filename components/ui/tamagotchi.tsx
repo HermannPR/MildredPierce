@@ -196,11 +196,6 @@ function drawChannelCard(ctx: CanvasRenderingContext2D, chIdx: number, elapsed: 
         ctx.arc(CX, CY, r, 0, Math.PI * 2);
         ctx.stroke();
       }
-      // Sweep gradient trail
-      const grad = ctx.createConicalGradient
-        ? null // not standard
-        : null;
-      void grad;
       ctx.save();
       ctx.strokeStyle = `rgba(26,104,136,${alpha * 0.8})`;
       ctx.lineWidth = 2;

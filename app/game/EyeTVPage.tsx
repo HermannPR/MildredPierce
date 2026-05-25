@@ -19,6 +19,10 @@ export function EyeTVPage() {
           from { background-position: 0 0; }
           to   { background-position: 0 4px; }
         }
+        @keyframes tap-pulse {
+          0%, 100% { opacity: 0.35; }
+          50%       { opacity: 0.65; }
+        }
         .eyetv-canvas-wrap canvas {
           animation: crt-flicker 10s infinite;
           filter:
@@ -38,42 +42,45 @@ export function EyeTVPage() {
         justifyContent: "center",
         background: "#020406",
         position: "relative",
-        overflow: "hidden",
+        overflowX: "hidden",
+        overflowY: "auto",
+        paddingTop: 48,
+        paddingBottom: 64,
         gap: 0,
       }}>
 
-        {/* Animated scanlines — subtly rolling */}
+        {/* Animated scanlines */}
         <div style={{
           position: "fixed", inset: 0, zIndex: 20, pointerEvents: "none",
           background: "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.22) 3px, rgba(0,0,0,0.22) 4px)",
           animation: "scanroll 0.12s steps(1) infinite",
         }} />
 
-        {/* Vignette — less aggressive, leaves center visible */}
+        {/* Vignette */}
         <div style={{
           position: "fixed", inset: 0, zIndex: 19, pointerEvents: "none",
-          background: "radial-gradient(ellipse at 50% 48%, transparent 35%, rgba(0,0,0,0.70) 80%, rgba(0,0,0,0.95) 100%)",
+          background: "radial-gradient(ellipse at 50% 42%, transparent 30%, rgba(0,0,0,0.65) 75%, rgba(0,0,0,0.95) 100%)",
         }} />
 
-        {/* Phosphor ambient glow — blue halo behind the canvas */}
+        {/* Phosphor ambient glow */}
         <div style={{
           position: "fixed",
-          top: "50%", left: "50%",
+          top: "42%", left: "50%",
           transform: "translate(-50%, -50%)",
-          width: 380, height: 380,
+          width: 420, height: 420,
           zIndex: 8,
           pointerEvents: "none",
           borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(20,80,160,0.18) 0%, transparent 70%)",
+          background: "radial-gradient(circle, rgba(20,80,160,0.16) 0%, transparent 70%)",
         }} />
 
-        {/* Station ID — top label */}
+        {/* Station ID */}
         <p style={{
           fontFamily: "'Press Start 2P', monospace",
-          fontSize: 7,
+          fontSize: 8,
           color: "#1e3a50",
           letterSpacing: "0.35em",
-          marginBottom: 18,
+          marginBottom: 14,
           position: "relative",
           zIndex: 10,
           textTransform: "uppercase",
@@ -81,12 +88,26 @@ export function EyeTVPage() {
           EYETV — CH. 00
         </p>
 
-        {/* Canvas */}
+        {/* Canvas + UI */}
         <div className="eyetv-canvas-wrap" style={{ position: "relative", zIndex: 10 }}>
           <EyeTV />
         </div>
 
-        {/* Bottom scan artifact line */}
+        {/* Tap hint */}
+        <p style={{
+          fontFamily: "'Press Start 2P', monospace",
+          fontSize: 6,
+          color: "#2a5070",
+          letterSpacing: "0.3em",
+          marginTop: 18,
+          position: "relative",
+          zIndex: 10,
+          animation: "tap-pulse 2.5s ease-in-out infinite",
+        }}>
+          TAP TO HYPE
+        </p>
+
+        {/* Bottom scan artifact */}
         <div style={{
           position: "fixed",
           top: "62%", left: 0, right: 0,
@@ -100,7 +121,7 @@ export function EyeTVPage() {
           className="eyetv-back"
           style={{
             position: "fixed",
-            bottom: 22,
+            bottom: 18,
             left: "50%",
             transform: "translateX(-50%)",
             fontFamily: "'Press Start 2P', monospace",
