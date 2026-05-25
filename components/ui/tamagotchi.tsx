@@ -545,6 +545,49 @@ function latLonToXY(lat: number, lon: number, W: number, H: number): [number, nu
   return [((lon + 180) / 360) * W, ((90 - lat) / 180) * H];
 }
 
+// Simplified continent polygons [lon, lat][]
+const LAND_SILHOUETTE: [number, number][][] = [
+  // North America
+  [[-168,72],[-130,72],[-55,72],[-55,46],[-76,44],[-82,28],[-88,16],[-93,15],
+   [-100,20],[-110,22],[-120,32],[-125,48],[-140,60],[-168,62]],
+  // Greenland
+  [[-55,83],[-15,83],[-18,70],[-43,62],[-55,71]],
+  // South America
+  [[-78,11],[-60,12],[-48,3],[-35,-8],[-40,-23],[-65,-55],[-72,-50],[-78,-32],[-80,-2],[-75,10]],
+  // Europe + Scandinavia
+  [[-10,72],[30,72],[42,50],[35,38],[28,35],[10,37],[0,38],[-9,39],[-10,44],
+   [-2,45],[5,48],[10,55],[-5,58],[5,57],[15,70],[30,70],[28,72]],
+  // Africa + Arabia
+  [[-18,37],[42,38],[55,24],[58,12],[50,12],[42,2],[40,-10],[35,-30],[18,-35],[-18,15]],
+  // Asia (Turkey → Pacific coast, merged blob)
+  [[28,72],[35,72],[135,72],[145,40],[140,35],[120,18],[100,-5],[78,8],[65,22],[45,12],[28,38],[28,72]],
+  // Japan
+  [[130,33],[132,40],[141,42],[142,35],[132,31]],
+  // Australia
+  [[114,-22],[130,-12],[136,-12],[152,-22],[154,-28],[148,-38],[136,-40],[124,-34],[114,-28]],
+  // New Zealand
+  [[166,-46],[172,-34],[178,-38],[172,-44],[166,-46]],
+  // Antarctica
+  [[-180,-65],[180,-65],[180,-90],[-180,-90]],
+];
+
+function drawWorldSilhouette(ctx: CanvasRenderingContext2D, W: number, H: number) {
+  ctx.fillStyle = "#07131e";
+  ctx.strokeStyle = "#0e2030";
+  ctx.lineWidth = 0.5;
+  for (const poly of LAND_SILHOUETTE) {
+    ctx.beginPath();
+    for (let i = 0; i < poly.length; i++) {
+      const [lon, lat] = poly[i];
+      const [x, y] = latLonToXY(lat, lon, W, H);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
 function SignalMap({ data }: { data: Record<string, number> }) {
   const ref  = useRef<HTMLCanvasElement>(null);
   const rafR = useRef(0);
@@ -562,6 +605,7 @@ function SignalMap({ data }: { data: Record<string, number> }) {
       frame++;
       ctx.fillStyle = "#020408";
       ctx.fillRect(0, 0, W, H);
+      drawWorldSilhouette(ctx, W, H);
 
       // Graticule
       ctx.strokeStyle = "#060e18";
@@ -569,18 +613,12 @@ function SignalMap({ data }: { data: Record<string, number> }) {
       for (let gx = 0; gx <= W; gx += W / 6) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
       for (let gy = 0; gy <= H; gy += H / 3) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
 
-      // Region hints
-      ctx.font = "6px monospace";
-      ctx.fillStyle = "#0c1c2a";
-      ctx.textAlign = "center";
-      [["AM",70,80],["EU",148,58],["AF",155,98],["AS",215,68],["OC",242,118]] .forEach(([l,x,y]) => ctx.fillText(String(l), Number(x), Number(y)));
-
-      // Dim dots — countries with no signal
+      // Dim dots — all tracked country positions
       Object.entries(COUNTRY_POS).forEach(([code, [lon, lat]]) => {
         if (data[code]) return;
         const [x, y] = latLonToXY(lat, lon, W, H);
-        ctx.fillStyle = "#0e2030";
-        ctx.beginPath(); ctx.arc(x, y, 1.2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#162840";
+        ctx.beginPath(); ctx.arc(x, y, 1.0, 0, Math.PI * 2); ctx.fill();
       });
 
       // Active dots — pulse
@@ -1117,7 +1155,12 @@ export function EyeTV() {
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     const ch = activeChRef.current;
     if (ch === 2) {
-      const c = toCanvasCoords(e); if (c) sandDrawRef.current = c;
+      const c = toCanvasCoords(e);
+      if (c) {
+        sandDrawRef.current = c;
+        // paint immediately — don't wait for next RAF frame (single taps would otherwise be missed)
+        paintSandGrid(sandGrid.current, SAND_CW, SAND_CH, c.cx, c.cy, sandBrushRef.current);
+      }
     } else if (ch === 3) {
       const c = toCanvasCoords(e);
       if (c) catchTargetX.current = (c.cx - SAND_X0) / SAND_PX - 2;
