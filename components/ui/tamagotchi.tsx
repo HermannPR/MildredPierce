@@ -1258,7 +1258,7 @@ export function EyeTV() {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, userSelect: "none" }}>
 
-      {/* Canvas */}
+      {/* Canvas + channel buttons overlaid on screen */}
       <div style={{ position: "relative", width: W, height: W, flexShrink: 0 }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -1267,57 +1267,53 @@ export function EyeTV() {
         <canvas
           ref={canvasRef}
           width={192} height={192}
-          style={{ cursor: activeCh===2?"crosshair":"default", imageRendering: "pixelated", display: "block", touchAction: "none", width: "100%", height: "100%" }}
+          style={{ imageRendering: "pixelated", display: "block", touchAction: "none", width: "100%", height: "100%" }}
         />
-      </div>
-
-      {/* Channel selector */}
-      <div style={{ display:"flex", gap:6, width:W }}>
-        {([
-          {ch:1, label:"CH.1 EYE"},
-          {ch:2, label:"CH.2 RUN"},
-          {ch:3, label:"CH.3 CATCH"},
-        ] as {ch:number,label:string}[]).map(({ch,label})=>(
-          <button key={ch} onPointerDown={()=>{setActiveCh(ch);activeChRef.current=ch;}} style={{
-            flex:1, fontFamily:"'Press Start 2P', monospace", fontSize:6,
-            background:activeCh===ch?"#0d2030":"#050a0f",
-            border:`1px solid ${activeCh===ch?"#2a6080":"#0e1c28"}`,
-            color:activeCh===ch?"#5a9ab8":"#1e3a4a",
-            padding:"7px 0", cursor:"pointer", touchAction:"none",
-            textShadow:activeCh===ch?"0 0 8px rgba(90,154,184,0.6)":"none",
-          }}>{label}</button>
-        ))}
-      </div>
-
-      {/* Virtual controls — only in platformer channel */}
-      {activeCh===2 && (
-        <div style={{ display:"flex", gap:6, width:W, justifyContent:"space-between", alignItems:"center" }}>
-          <button
-            onPointerDown={()=>{keysRef.current.left=true;}} onPointerUp={()=>{keysRef.current.left=false;}}
-            onPointerLeave={()=>{keysRef.current.left=false;}}
-            style={{ flex:1, fontFamily:"'Press Start 2P', monospace", fontSize:14,
-              background:"#050a0f", border:"1px solid #0e2030", color:"#2a5878",
-              padding:"10px 0", cursor:"pointer", touchAction:"none", userSelect:"none",
-              boxShadow:"0 0 8px rgba(0,40,80,0.4)",
-            }}>◀</button>
-          <button
-            onPointerDown={()=>{keysRef.current.jump=true;}} onPointerUp={()=>{keysRef.current.jump=false;}}
-            onPointerLeave={()=>{keysRef.current.jump=false;}}
-            style={{ flex:1.4, fontFamily:"'Press Start 2P', monospace", fontSize:10,
-              background:"#060d18", border:"1px solid #1a4060", color:"#3a7898",
-              padding:"10px 0", cursor:"pointer", touchAction:"none", userSelect:"none",
-              boxShadow:"0 0 12px rgba(0,60,120,0.5)",
-            }}>JUMP</button>
-          <button
-            onPointerDown={()=>{keysRef.current.right=true;}} onPointerUp={()=>{keysRef.current.right=false;}}
-            onPointerLeave={()=>{keysRef.current.right=false;}}
-            style={{ flex:1, fontFamily:"'Press Start 2P', monospace", fontSize:14,
-              background:"#050a0f", border:"1px solid #0e2030", color:"#2a5878",
-              padding:"10px 0", cursor:"pointer", touchAction:"none", userSelect:"none",
-              boxShadow:"0 0 8px rgba(0,40,80,0.4)",
-            }}>▶</button>
+        {/* Channel buttons glowing over TV screen */}
+        <div style={{ position:"absolute", bottom:"7%", left:0, right:0, display:"flex", justifyContent:"center", gap:"3%", pointerEvents:"none" }}>
+          {([{ch:1,label:"CH.1"},{ch:2,label:"CH.2"},{ch:3,label:"CH.3"}] as {ch:number;label:string}[]).map(({ch,label})=>(
+            <button key={ch}
+              onPointerDown={(e)=>{ e.stopPropagation(); setActiveCh(ch); activeChRef.current=ch; }}
+              style={{
+                pointerEvents:"all",
+                fontFamily:"'Press Start 2P', monospace", fontSize:"clamp(5px,2vw,8px)",
+                background: activeCh===ch ? "rgba(8,24,44,0.95)" : "rgba(2,6,14,0.82)",
+                border:`1px solid ${activeCh===ch?"#3a7898":"#0d1c2a"}`,
+                color: activeCh===ch ? "#6ab8d8" : "#1a3040",
+                padding:"4px 10px", cursor:"pointer", touchAction:"none",
+                boxShadow: activeCh===ch ? "0 0 12px rgba(58,120,152,0.8), inset 0 0 8px rgba(40,90,130,0.3)" : "none",
+                textShadow: activeCh===ch ? "0 0 10px rgba(106,184,216,1)" : "none",
+                borderRadius:2, letterSpacing:"0.1em",
+              }}>{label}</button>
+          ))}
         </div>
-      )}
+      </div>
+
+      {/* Fixed L / R side buttons — platformer only */}
+      {activeCh===2 && (<>
+        <button
+          onPointerDown={()=>{keysRef.current.left=true;}} onPointerUp={()=>{keysRef.current.left=false;}}
+          onPointerLeave={()=>{keysRef.current.left=false;}} onPointerCancel={()=>{keysRef.current.left=false;}}
+          style={{ position:"fixed", left:0, top:"50%", transform:"translateY(-50%)",
+            width:52, height:130, zIndex:9000,
+            fontFamily:"'Press Start 2P', monospace", fontSize:22,
+            background:"rgba(3,10,22,0.9)", border:"1px solid #1a4060", borderLeft:"none",
+            color:"#3a7898", cursor:"pointer", touchAction:"none", userSelect:"none",
+            boxShadow:"4px 0 20px rgba(0,50,110,0.45)", borderRadius:"0 8px 8px 0",
+            display:"flex", alignItems:"center", justifyContent:"center",
+          }}>◀</button>
+        <button
+          onPointerDown={()=>{keysRef.current.right=true;}} onPointerUp={()=>{keysRef.current.right=false;}}
+          onPointerLeave={()=>{keysRef.current.right=false;}} onPointerCancel={()=>{keysRef.current.right=false;}}
+          style={{ position:"fixed", right:0, top:"50%", transform:"translateY(-50%)",
+            width:52, height:130, zIndex:9000,
+            fontFamily:"'Press Start 2P', monospace", fontSize:22,
+            background:"rgba(3,10,22,0.9)", border:"1px solid #1a4060", borderRight:"none",
+            color:"#3a7898", cursor:"pointer", touchAction:"none", userSelect:"none",
+            boxShadow:"-4px 0 20px rgba(0,50,110,0.45)", borderRadius:"8px 0 0 8px",
+            display:"flex", alignItems:"center", justifyContent:"center",
+          }}>▶</button>
+      </>)}
 
       <div style={{ width: W, display: "flex", flexDirection: "column", gap: 8 }}>
 
