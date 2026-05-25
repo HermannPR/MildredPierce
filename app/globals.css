@@ -50,9 +50,15 @@ body::before {
 }
 
 
-/* RGB dead pixel easter egg */
-@keyframes hue-spin {
-  to { filter: hue-rotate(360deg); }
+/* Stuck pixel — solid, rare glitch flicker */
+@keyframes pixel-stuck {
+  0%, 86%, 90%, 94%, 100% { opacity: 1; }
+  87%  { opacity: 0; }
+  88%  { opacity: 0.7; }
+  89%  { opacity: 0.1; }
+  91%  { opacity: 0.9; }
+  92%  { opacity: 0; }
+  95%  { opacity: 1; }
 }
 
 

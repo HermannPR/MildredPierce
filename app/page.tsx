@@ -461,12 +461,13 @@ export default function Home() {
           <rect x={13} y={20} width={6} height={3} fill="#07070e" />
           <rect x={10} y={23} width={12} height={3} fill="#05050a" />
         </svg>
-        {/* Dead pixel — slow color cycle */}
+        {/* Stuck pixel — bright white, rare flicker */}
         <div style={{
           width: 8, height: 8,
-          background: "hsl(0,80%,55%)",
-          animation: "hue-spin 5s linear infinite",
+          background: "#ffe8c0",
+          animation: "pixel-stuck 6s linear infinite",
           marginBottom: 4,
+          boxShadow: "0 0 4px 2px rgba(255,232,192,0.6)",
         }} />
       </div>
 
