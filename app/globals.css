@@ -55,6 +55,20 @@ body::before {
   to { filter: hue-rotate(360deg); }
 }
 
+/* Dead pixel screensaver drift — wanders the full viewport */
+@keyframes pixel-drift {
+  0%   { transform: translate(  0vw,   0vh); }
+  11%  { transform: translate(-22vw, -16vh); }
+  22%  { transform: translate( 18vw, -24vh); }
+  33%  { transform: translate( 28vw,   8vh); }
+  44%  { transform: translate(  6vw,  22vh); }
+  55%  { transform: translate(-26vw,  18vh); }
+  66%  { transform: translate(-28vw,  -6vh); }
+  77%  { transform: translate(  4vw, -20vh); }
+  88%  { transform: translate( 24vw,  14vh); }
+  100% { transform: translate(  0vw,   0vh); }
+}
+
 /* Background breathe — fractal + smoke pulse */
 @keyframes bg-breathe {
   0%, 100% { opacity: 0.38; }

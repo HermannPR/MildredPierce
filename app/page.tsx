@@ -364,18 +364,19 @@ export default function Home() {
         href="/game"
         style={{
           position: "fixed",
-          bottom: 18,
-          right: 18,
+          top: "42vh",
+          left: "46vw",
           zIndex: 50,
           display: "flex",
           alignItems: "flex-end",
           gap: 5,
-          opacity: 0.38,
-          transition: "opacity 0.4s",
+          opacity: 0.45,
+          transition: "opacity 0.3s",
           textDecoration: "none",
+          animation: "pixel-drift 80s ease-in-out infinite",
         }}
-        onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.88"; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.38"; }}
+        onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.92"; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.45"; }}
       >
         {/* Tiny pixel-art TV — eye looking right toward the dead pixel */}
         <svg
