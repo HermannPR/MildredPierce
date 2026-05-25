@@ -183,7 +183,7 @@ export function EyeTV() {
       if (st === "active" && activeFrame.current <= 0) st = "idle";
       if (elapsed > 120) st = "sleep";
       else if (elapsed > 45 && st !== "glitch" && st !== "active") {
-        if (st !== "glitch") noiseRef.current = makeNoise();
+        noiseRef.current = makeNoise();
         st = "glitch";
       }
       stateRef.current = st;
