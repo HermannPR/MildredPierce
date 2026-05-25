@@ -1041,10 +1041,16 @@ export function EyeTV() {
 
       const ch = activeChRef.current;
 
+      // DEBUG — top-left dots: green=loop alive, yellow=ch2 active
+      ctx.fillStyle = "#00ff00"; ctx.fillRect(0, 0, 5, 5);
+      if (ch === 2) { ctx.fillStyle = "#ffff00"; ctx.fillRect(6, 0, 5, 5); }
+      // DEBUG — log to console every 120 frames
+      if (f % 120 === 0) console.log("[EyeTV debug]", { ch, frame: f, platPhase: platPhaseRef.current, playerY: Math.round(playerPlatRef.current.y) });
+
       if (ch === 2) {
         // ── Platformer Escape ─────────────────────────────
-        const phase = platPhaseRef.current;
-        if (phase === "playing") {
+        const platPh = platPhaseRef.current;
+        if (platPh === "playing") {
           const res = pfUpdate(playerPlatRef.current, eyeEnemyRef.current, keysRef.current, jumpConsumed, PF_LEVELS[platLevelRef.current]);
           if (res === "die") { platPhaseRef.current = "dead"; platDeadTimer.current = 90; }
           else if (res === "win") {
@@ -1054,17 +1060,17 @@ export function EyeTV() {
             setHype(h => h + reward); setMyScore(s => s + reward);
             MILESTONES.forEach((m, mi) => { if (hypeRef.current >= m) passedRef.current.add(mi); });
           }
-        } else if (phase === "dead") {
+        } else if (platPh === "dead") {
           platDeadTimer.current--;
           if (platDeadTimer.current <= 0) initPlatLevel(platLevelRef.current);
-        } else if (phase === "win") {
+        } else if (platPh === "win") {
           platWinTimer.current--;
           if (platWinTimer.current <= 0) {
             const next = Math.min(platLevelRef.current + 1, PF_LEVELS.length - 1);
             initPlatLevel(next);
           }
         }
-        pfDraw(ctx, playerPlatRef.current, eyeEnemyRef.current, PF_LEVELS[platLevelRef.current], platPhaseRef.current, platLevelRef.current, f);
+        pfDraw(ctx, playerPlatRef.current, eyeEnemyRef.current, PF_LEVELS[platLevelRef.current], platPh, platLevelRef.current, f);
 
       } else if (ch === 3) {
         // ── Signal Catcher ────────────────────────────────
@@ -1271,31 +1277,33 @@ export function EyeTV() {
     if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([10, 30, 10]);
   }, []);
 
-  if (phase === "pick") {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, userSelect: "none" }}>
-        <NamePicker onConfirm={handleConfirm} />
-        <div style={{ width: 220 }} /> {/* spacer to match play layout height */}
-      </div>
-    );
-  }
-
   const W = "clamp(280px, 88vw, 420px)";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, userSelect: "none" }}>
 
-      {/* Canvas */}
+      {/* Canvas — always in DOM so animation loop can start immediately */}
       <div style={{ position: "relative", width: W, height: W, flexShrink: 0 }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}>
+        onPointerDown={phase === "play" ? handlePointerDown : undefined}
+        onPointerMove={phase === "play" ? handlePointerMove : undefined}
+        onPointerUp={phase === "play" ? handlePointerUp : undefined}
+        onPointerLeave={phase === "play" ? handlePointerUp : undefined}>
         <canvas
           ref={canvasRef}
           width={192} height={192}
           style={{ imageRendering: "pixelated", display: "block", touchAction: "none", width: "100%", height: "100%" }}
         />
+        {/* NamePicker overlay — sits on top of canvas, removed once name confirmed */}
+        {phase === "pick" && (
+          <div style={{
+            position: "absolute", inset: 0,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(2,4,8,0.92)",
+            zIndex: 10,
+          }}>
+            <NamePicker onConfirm={handleConfirm} />
+          </div>
+        )}
       </div>
 
       {/* Channel selector — standalone row, reliable tap targets */}
