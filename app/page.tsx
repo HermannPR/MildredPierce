@@ -33,6 +33,11 @@ const WaveformVisualizer = dynamic(
   { ssr: false }
 );
 
+const SignalDropout = dynamic(
+  () => import("@/components/ui/signal-dropout").then((m) => m.SignalDropout),
+  { ssr: false }
+);
+
 const YOUTUBE_ID      = "wGk5GWPWHzo";
 const SPOTIFY_URL     = "https://open.spotify.com/intl-es/album/52QhMekZYeTTFNOx14Kkla?si=S4ldMHDxSMe-BuIdbfa0lg";
 const YOUTUBE_URL     = "https://youtu.be/wGk5GWPWHzo?si=x5V0kTD6Rg8MN_Qp";
@@ -558,6 +563,9 @@ export default function Home() {
           transition: expandPhase === "growing" ? "clip-path 0.65s ease-in" : "none",
         }} />
       )}
+
+      {/* ── Signal dropout — rare TV interference burst ── */}
+      {crtDone && <SignalDropout />}
 
       {/* ── CRT intro ── */}
       {!crtDone && <CRTIntro onComplete={handleCRTDone} />}
