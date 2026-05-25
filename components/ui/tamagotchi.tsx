@@ -462,36 +462,44 @@ export function EyeTV() {
         style={{ cursor: "crosshair", imageRendering: "pixelated", display: "block" }}
       />
 
-      <div style={{ width: 192, display: "flex", flexDirection: "column", gap: 6 }}>
-        <div style={{ width: "100%", height: 2, background: "#08080e", position: "relative", overflow: "hidden" }}>
+      <div style={{ width: 192, display: "flex", flexDirection: "column", gap: 8 }}>
+        {/* Hype progress bar */}
+        <div style={{ width: "100%", height: 4, background: "#0a0e14", borderRadius: 2, position: "relative", overflow: "hidden" }}>
           <div style={{
             position: "absolute", left: 0, top: 0, bottom: 0,
             width: `${pct}%`,
-            background: "#163040",
+            background: "linear-gradient(90deg, #1a4060, #2a7090)",
+            boxShadow: "0 0 8px rgba(42,112,144,0.7)",
+            borderRadius: 2,
             transition: "width 0.4s ease",
           }} />
         </div>
+
+        {/* Hype count */}
         <p style={{
           fontFamily: "'Press Start 2P', monospace",
           fontSize: 7,
-          color: "#142030",
+          color: "#3a6888",
           letterSpacing: "0.12em",
           textAlign: "center",
           margin: 0,
+          textShadow: "0 0 10px rgba(42,112,144,0.5)",
         }}>
           HYPE {hype.toLocaleString()} / {HYPE_GOAL.toLocaleString()}
         </p>
 
+        {/* Leaderboard */}
         {leaderboard.length > 0 && (
-          <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 2 }}>
             {leaderboard.map((entry, i) => (
               <div key={i} style={{
                 display: "flex",
                 justifyContent: "space-between",
                 fontFamily: "'Press Start 2P', monospace",
                 fontSize: 6,
-                color: i === 0 ? "#1e3a4a" : "#0e1820",
+                color: i === 0 ? "#3a6888" : "#1e3a4a",
                 letterSpacing: "0.08em",
+                textShadow: i === 0 ? "0 0 8px rgba(42,112,144,0.4)" : "none",
               }}>
                 <span>{entry.alias.padEnd(4)}</span>
                 <span>{entry.clicks.toLocaleString()}</span>

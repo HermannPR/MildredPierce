@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Instagram, Youtube } from "lucide-react";
 import { HoverMorphText } from "@/components/ui/hover-morph-text";
 import { CRTIntro } from "@/components/ui/crt-intro";
@@ -123,7 +123,21 @@ export default function Home() {
   const [crtDone,   setCRTDone]   = useState(false);
   const [smokeHue,  setSmokeHue]  = useState("#001840");
 
+  // Dead pixel easter egg — grid-snap movement + expand-to-fill transition
+  const [pixelPos,    setPixelPos]    = useState({ x: 0, y: 0 });
+  const [expandPhase, setExpandPhase] = useState<"idle" | "start" | "growing">("idle");
+  const [expandOrigin, setExpandOrigin] = useState({ x: 0, y: 0 });
+  const jumpTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
   const handleCRTDone = useCallback(() => setCRTDone(true), []);
+
+  const handlePixelClick = useCallback((e: React.MouseEvent) => {
+    if (expandPhase !== "idle") return;
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setExpandOrigin({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+    setExpandPhase("start");
+    clearTimeout(jumpTimerRef.current); // stop jumping
+  }, [expandPhase]);
 
   // Smoke hue shift — breathes between crimson and dark burgundy every 12s
   useEffect(() => {
@@ -135,6 +149,41 @@ export default function Home() {
     }, 12000);
     return () => clearInterval(id);
   }, []);
+
+  // Grid-snap movement — teleports to random 80px-grid position every 3-8s
+  useEffect(() => {
+    const GRID = 80;
+    const snap = () => {
+      const cols = Math.max(2, Math.floor((window.innerWidth  - 60) / GRID));
+      const rows = Math.max(2, Math.floor((window.innerHeight - 50) / GRID));
+      setPixelPos({
+        x: Math.floor(Math.random() * cols) * GRID,
+        y: Math.floor(Math.random() * rows) * GRID,
+      });
+    };
+    snap();
+    const schedule = () => {
+      jumpTimerRef.current = setTimeout(() => { snap(); schedule(); }, 3000 + Math.random() * 5000);
+    };
+    schedule();
+    return () => clearTimeout(jumpTimerRef.current);
+  }, []);
+
+  // Expand phase 1→2: one double-rAF so the start circle renders before transition kicks in
+  useEffect(() => {
+    if (expandPhase !== "start") return;
+    const id = requestAnimationFrame(() =>
+      requestAnimationFrame(() => setExpandPhase("growing"))
+    );
+    return () => cancelAnimationFrame(id);
+  }, [expandPhase]);
+
+  // Navigate after expand fills screen
+  useEffect(() => {
+    if (expandPhase !== "growing") return;
+    const id = setTimeout(() => { window.location.href = "/game"; }, 720);
+    return () => clearTimeout(id);
+  }, [expandPhase]);
 
   useEffect(() => {
     if (!crtDone) return;
@@ -359,62 +408,60 @@ export default function Home() {
         </section>
       </div>
 
-      {/* ── Easter egg — dead pixel + tiny TV → /game ── */}
-      <a
-        href="/game"
+      {/* ── Dead pixel easter egg — grid-snap, click to expand → /game ── */}
+      <div
+        onClick={handlePixelClick}
         style={{
           position: "fixed",
-          top: "42vh",
-          left: "46vw",
+          left: pixelPos.x,
+          top:  pixelPos.y,
           zIndex: 50,
           display: "flex",
           alignItems: "flex-end",
           gap: 5,
-          opacity: 0.45,
-          transition: "opacity 0.3s",
-          textDecoration: "none",
-          animation: "pixel-drift 80s ease-in-out infinite",
+          opacity: expandPhase !== "idle" ? 0 : 0.42,
+          cursor: "crosshair",
         }}
-        onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.92"; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.45"; }}
+        onMouseEnter={e => { if (expandPhase === "idle") (e.currentTarget as HTMLElement).style.opacity = "0.9"; }}
+        onMouseLeave={e => { if (expandPhase === "idle") (e.currentTarget as HTMLElement).style.opacity = "0.42"; }}
       >
-        {/* Tiny pixel-art TV — eye looking right toward the dead pixel */}
-        <svg
-          width={32} height={26}
-          viewBox="0 0 32 26"
-          style={{ display: "block", imageRendering: "pixelated" }}
-        >
-          {/* bezel */}
+        {/* Tiny pixel-art TV — eye looking right toward dead pixel */}
+        <svg width={32} height={26} viewBox="0 0 32 26" style={{ display: "block", imageRendering: "pixelated" }}>
           <rect x={0} y={0} width={32} height={20} rx={2} fill="#0b0b10" />
-          {/* screen */}
           <rect x={2} y={2} width={28} height={15} fill="#040810" />
-          {/* scanlines */}
           <rect x={2} y={4} width={28} height={1} fill="#020408" />
           <rect x={2} y={8} width={28} height={1} fill="#020408" />
           <rect x={2} y={12} width={28} height={1} fill="#020408" />
-          {/* eye white */}
           <rect x={5} y={3} width={19} height={11} fill="#6a8ea8" />
-          {/* iris — shifted right (looking at dead pixel) */}
           <rect x={18} y={5} width={5} height={7} fill="#0e2030" />
-          {/* pupil */}
           <rect x={19} y={7} width={2} height={3} fill="#010306" />
-          {/* shine */}
           <rect x={19} y={7} width={1} height={1} fill="#6a98c0" />
-          {/* stand */}
           <rect x={13} y={20} width={6} height={3} fill="#07070e" />
           <rect x={10} y={23} width={12} height={3} fill="#05050a" />
         </svg>
-        {/* RGB dead pixel — 8×8px, cycles all hues */}
-        <div
-          style={{
-            width: 8,
-            height: 8,
-            background: "hsl(0,100%,55%)",
-            animation: "hue-spin 1.5s linear infinite",
-            marginBottom: 4,
-          }}
-        />
-      </a>
+        {/* RGB dead pixel */}
+        <div style={{
+          width: 8, height: 8,
+          background: "hsl(0,100%,55%)",
+          animation: "hue-spin 1.5s linear infinite",
+          marginBottom: 4,
+        }} />
+      </div>
+
+      {/* Expand overlay — RGB circle that floods the screen on click */}
+      {expandPhase !== "idle" && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 9990,
+          background: "hsl(0,100%,55%)",
+          animation: "hue-spin 0.22s linear infinite",
+          clipPath: expandPhase === "growing"
+            ? `circle(200vmax at ${expandOrigin.x}px ${expandOrigin.y}px)`
+            : `circle(8px at ${expandOrigin.x}px ${expandOrigin.y}px)`,
+          transition: expandPhase === "growing" ? "clip-path 0.65s ease-in" : "none",
+        }} />
+      )}
 
       {/* ── CRT intro ── */}
       {!crtDone && <CRTIntro onComplete={handleCRTDone} />}
