@@ -388,14 +388,19 @@ export default function Home() {
           overflow-hidden
           h-[56vw] md:h-full
         ">
-          <div className="w-full">
+          <div className="w-full px-4 md:px-6 lg:px-8">
             <div
-              className="hidden md:block text-center mb-2"
-              style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.65rem", fontFamily: "var(--font-display)", textTransform: "uppercase" }}
+              className="hidden md:block text-center mb-3"
+              style={{ color: PARCHMENT, letterSpacing: "0.28em", fontSize: "0.58rem", fontFamily: "var(--font-display)", textTransform: "uppercase", opacity: 0.7 }}
             >
-              Fractal Agreement
+              Fractal Agreement — Official Video
             </div>
-            <div style={{ width: "100%", aspectRatio: "16/9" }}>
+            <div style={{
+              width: "100%", aspectRatio: "16/9",
+              borderRadius: "3px",
+              overflow: "hidden",
+              boxShadow: "0 0 0 1px rgba(100,180,255,0.12), 0 0 40px rgba(0,100,200,0.22), 0 0 80px rgba(0,50,120,0.12)",
+            }}>
               <iframe
                 src={`https://www.youtube.com/embed/${YOUTUBE_ID}?rel=0&modestbranding=1&color=white`}
                 style={{ width: "100%", height: "100%", border: "none", display: "block" }}
@@ -407,89 +412,83 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── Editorial content — top on mobile, left on desktop ── */}
+        {/* ── Photo-forward hero — full-bleed band photo, content overlay ── */}
         <section className="
           order-1 md:order-1
-          flex flex-col justify-center flex-1
-          px-6 md:px-10 lg:px-16
-          pt-6 pb-4 md:py-0
-          gap-0
+          flex flex-col justify-end flex-1
           relative z-30
+          overflow-hidden
+          min-h-[75vw] md:min-h-0 md:h-full
         ">
+          {/* Full-bleed band photo */}
+          <Image
+            src="/BandImage.jpeg"
+            alt="Mildred Pierce"
+            fill
+            priority
+            style={{ objectFit: "cover", objectPosition: "center 20%" }}
+          />
 
-          {/* Top rule */}
-          <div className="mb-3 md:mb-8" style={{ height: 1, background: RULE }} />
+          {/* Gradient — dark at bottom where content lives, clears in upper half */}
+          <div style={{
+            position: "absolute", inset: 0,
+            background: "linear-gradient(to bottom, rgba(2,10,24,0.18) 0%, rgba(2,10,24,0.08) 30%, rgba(2,10,24,0.72) 65%, rgba(2,10,24,0.97) 100%)",
+          }} />
 
-          {/* Title */}
-          <div className="relative" style={{ height: "clamp(100px, 18vw, 210px)" }}>
-            <HoverMorphText
-              from="MILDRED PIERCE"
-              to="FRACTAL AGREEMENT"
-              isActive={isFractal}
-              color={IVORY}
-              fontSize={TITLE_SIZE}
-              className="absolute inset-0"
-              textClassName="font-display leading-tight tracking-[0.14em] w-full"
-            />
-          </div>
+          {/* Right edge fade — blends into the dark video column */}
+          <div style={{
+            position: "absolute", inset: 0,
+            background: "linear-gradient(to right, transparent 55%, rgba(2,10,24,0.88) 100%)",
+          }} />
 
-          {/* Release date */}
-          <p
-            className="font-display uppercase select-none"
-            style={{
-              color: STEEL,
-              letterSpacing: "0.45em",
-              fontSize: "clamp(0.48rem, 1vw, 0.62rem)",
-              marginTop: "0.6rem",
-            }}
-          >
-            2026 — Debut Single
-          </p>
+          {/* Content — anchored to bottom */}
+          <div className="relative z-10 px-7 md:px-10 lg:px-14 pb-10 md:pb-14 pt-6">
 
-          {/* Bottom rule */}
-          <div className="mt-3 md:mt-8" style={{ height: 1, background: RULE }} />
+            {/* Rule */}
+            <div className="mb-5" style={{ height: 1, background: RULE }} />
 
-          {/* ── Streaming platforms — two-column ── */}
-          <div className="flex items-start gap-4 pt-4 pb-1">
-
-            {/* Band photo */}
-            <div
-              style={{
-                position: "relative",
-                width: 160, height: 160,
-                borderRadius: "4px",
-                overflow: "hidden",
-                flexShrink: 0,
-                border: "1px solid rgba(245,237,213,0.18)",
-                boxShadow: "0 0 32px rgba(0,200,255,0.25)",
-              }}
-            >
-              <Image src="/BandImage.jpeg" alt="Mildred Pierce" fill style={{ objectFit: "cover" }} />
+            {/* Title */}
+            <div className="relative" style={{ height: "clamp(90px, 17vw, 200px)" }}>
+              <HoverMorphText
+                from="MILDRED PIERCE"
+                to="FRACTAL AGREEMENT"
+                isActive={isFractal}
+                color={IVORY}
+                fontSize={TITLE_SIZE}
+                className="absolute inset-0"
+                textClassName="font-display leading-tight tracking-[0.14em] w-full"
+              />
             </div>
 
-            {/* Descriptor + buttons */}
-            <div className="flex flex-col flex-1 gap-2">
-              <div className="flex flex-col gap-[3px]">
-                <span
-                  className="font-display uppercase select-none"
-                  style={{ color: IVORY, letterSpacing: "0.18em", fontSize: "0.72rem" }}
-                >
-                  Mildred Pierce
-                </span>
-                <span
-                  className="font-display uppercase select-none"
-                  style={{ color: PARCHMENT, letterSpacing: "0.16em", fontSize: "0.65rem" }}
-                >
-                  Debut Single: Fractal Agreement
-                </span>
-                <span
-                  className="font-display uppercase select-none"
-                  style={{ color: PARCHMENT, letterSpacing: "0.22em", fontSize: "0.65rem", opacity: 0.7 }}
-                >
-                  Enter the signal.
-                </span>
-              </div>
+            {/* Tagline — large, visible */}
+            <p
+              className="font-display uppercase select-none"
+              style={{ color: STEEL, letterSpacing: "0.35em", fontSize: "clamp(0.6rem, 1.1vw, 0.78rem)", marginTop: "0.7rem" }}
+            >
+              Enter the signal.
+            </p>
 
+            {/* Release line */}
+            <p
+              className="font-display uppercase select-none"
+              style={{ color: PARCHMENT, letterSpacing: "0.45em", fontSize: "clamp(0.44rem, 0.9vw, 0.56rem)", marginTop: "0.3rem", opacity: 0.6 }}
+            >
+              2026 — Debut Single
+            </p>
+
+            {/* Rule */}
+            <div className="mt-6 mb-4" style={{ height: 1, background: RULE }} />
+
+            {/* Listen label */}
+            <p
+              className="font-display uppercase select-none"
+              style={{ color: STEEL, letterSpacing: "0.4em", fontSize: "0.5rem", marginBottom: "0.9rem", opacity: 0.65 }}
+            >
+              — Listen Now —
+            </p>
+
+            {/* Streaming buttons */}
+            <div className="flex flex-col gap-[6px] max-w-sm">
               <PlatformLink
                 href={SPOTIFY_URL}
                 icon={<SpotifyIcon />}
@@ -515,21 +514,20 @@ export default function Home() {
                 iconColor="#E1306C"
               />
             </div>
+
+            {/* Watch CTA — mobile only */}
+            <GlassButton
+              className="md:hidden self-start mt-4"
+              size="sm"
+              onClick={() => document.getElementById("music-video")?.scrollIntoView({ behavior: "smooth" })}
+            >
+              <span style={{ fontSize: "0.75rem" }}>▶</span>
+              <span className="font-display uppercase" style={{ letterSpacing: "0.20em", fontSize: "0.65rem" }}>
+                Play Track
+              </span>
+            </GlassButton>
+
           </div>
-
-          {/* Watch CTA — mobile only */}
-          <GlassButton
-            className="md:hidden self-start mt-3"
-            size="sm"
-            onClick={() => document.getElementById("music-video")?.scrollIntoView({ behavior: "smooth" })}
-          >
-            <span style={{ fontSize: "0.75rem" }}>▶</span>
-            <span className="font-display uppercase" style={{ letterSpacing: "0.20em", fontSize: "0.65rem" }}>
-              Play Track
-            </span>
-          </GlassButton>
-
-
         </section>
       </div>
 
