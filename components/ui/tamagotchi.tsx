@@ -332,6 +332,123 @@ function drawRandomChannel(ctx: CanvasRenderingContext2D, idx: number, frame: nu
   }
 }
 
+// ── Falling sand (channel 2) ─────────────────────────────────
+const SAND_PX = 4, SAND_X0 = 24, SAND_Y0 = 18, SAND_CW = 36, SAND_CH = 30;
+const MAT_EMPTY=0, MAT_SAND=1, MAT_WATER=2, MAT_FIRE=3, MAT_WOOD=4, MAT_STONE=5, MAT_SMOKE=6;
+const SAND_COLORS: Record<number, string[]> = {
+  1:["#c8a050","#b89040","#d8b060"],
+  2:["#1a50b0","#2060c0","#183898"],
+  3:["#e03008","#f04818","#c02000","#ff5020"],
+  4:["#5a2a0e","#6a3a1e","#4a1a04"],
+  5:["#404050","#505060","#383848"],
+  6:["#252528","#2a2a2e","#303035"],
+};
+
+function updateSandGrid(g: Uint8Array, W: number, H: number, burnPts: { current: number }) {
+  for (let y = H-1; y >= 0; y--) {
+    const flip = Math.random() > 0.5;
+    for (let xi = 0; xi < W; xi++) {
+      const x = flip ? xi : W-1-xi;
+      const i = y*W+x, m = g[i];
+      if (!m) continue;
+      if (m === MAT_SAND) {
+        if (y===H-1) continue;
+        const b=(y+1)*W+x;
+        if (!g[b]||g[b]===MAT_WATER){g[i]=g[b];g[b]=MAT_SAND;continue;}
+        for (const dx of [flip?-1:1, flip?1:-1]) {
+          if (x+dx<0||x+dx>=W) continue;
+          const nb=(y+1)*W+(x+dx);
+          if (!g[nb]||g[nb]===MAT_WATER){g[i]=g[nb];g[nb]=MAT_SAND;break;}
+        }
+      } else if (m === MAT_WATER) {
+        if (y<H-1){const b=(y+1)*W+x;if(!g[b]){g[b]=MAT_WATER;g[i]=0;continue;}}
+        for (const dx of [flip?-1:1, flip?1:-1]) {
+          if (x+dx<0||x+dx>=W) continue;
+          if (!g[y*W+(x+dx)]){g[y*W+(x+dx)]=MAT_WATER;g[i]=0;break;}
+        }
+      } else if (m === MAT_FIRE) {
+        let out=false;
+        for (const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]] as [number,number][]) {
+          const nx=x+dx,ny=y+dy;
+          if (nx<0||nx>=W||ny<0||ny>=H) continue;
+          const ni=ny*W+nx;
+          if (g[ni]===MAT_WATER){g[i]=0;g[ni]=0;out=true;break;}
+          if (g[ni]===MAT_WOOD&&Math.random()<0.04){g[ni]=MAT_FIRE;burnPts.current++;}
+        }
+        if (out) continue;
+        if (y>0&&Math.random()<0.25){const ai=(y-1)*W+x;if(!g[ai]){g[ai]=MAT_FIRE;g[i]=MAT_SMOKE;continue;}}
+        if (Math.random()<0.015) g[i]=MAT_SMOKE;
+      } else if (m === MAT_SMOKE) {
+        if (Math.random()<0.025){g[i]=0;continue;}
+        if (y>0&&Math.random()<0.35){
+          const ai=(y-1)*W+x;
+          if (!g[ai]){g[ai]=MAT_SMOKE;g[i]=0;continue;}
+          const dx=flip?-1:1;
+          if (x+dx>=0&&x+dx<W&&!g[(y-1)*W+(x+dx)]){g[(y-1)*W+(x+dx)]=MAT_SMOKE;g[i]=0;}
+        }
+      }
+    }
+  }
+}
+
+function paintSandGrid(g: Uint8Array, W: number, H: number, cx: number, cy: number, mat: number) {
+  const gx=Math.floor((cx-SAND_X0)/SAND_PX), gy=Math.floor((cy-SAND_Y0)/SAND_PX);
+  for (let dy=-1;dy<=1;dy++) for (let dx=-1;dx<=1;dx++) {
+    const nx=gx+dx,ny=gy+dy;
+    if (nx<0||nx>=W||ny<0||ny>=H) continue;
+    if (mat===MAT_EMPTY) g[ny*W+nx]=0;
+    else if (mat===MAT_WOOD||mat===MAT_STONE) g[ny*W+nx]=mat;
+    else if (!g[ny*W+nx]) g[ny*W+nx]=mat;
+  }
+}
+
+function drawSandGrid(ctx: CanvasRenderingContext2D, g: Uint8Array, W: number, H: number, f: number) {
+  ctx.fillStyle=C.screen; ctx.fillRect(SAND_X0,SAND_Y0,W*SAND_PX,H*SAND_PX);
+  for (let y=0;y<H;y++) for (let x=0;x<W;x++) {
+    const m=g[y*W+x]; if (!m) continue;
+    const cols=SAND_COLORS[m];
+    ctx.fillStyle=cols[m===MAT_FIRE?(f+x+y)%cols.length:(x*7+y*11)%cols.length];
+    ctx.fillRect(SAND_X0+x*SAND_PX,SAND_Y0+y*SAND_PX,SAND_PX,SAND_PX);
+  }
+}
+
+// ── Signal catcher (channel 3) ────────────────────────────────
+interface CatchDot { x:number; y:number; vy:number; }
+
+function updateCatcher(
+  dots: CatchDot[], paddleX: {current:number}, targetX: {current:number|null},
+  W: number, H: number, f: number, onCatch: ()=>void
+) {
+  if (f%22===0) dots.push({x:1+Math.floor(Math.random()*(W-2)), y:0, vy:0.22+Math.random()*0.28});
+  if (targetX.current!==null) {
+    const t=Math.max(0,Math.min(W-4,targetX.current));
+    paddleX.current += (t-paddleX.current)*0.22;
+  }
+  for (let i=dots.length-1;i>=0;i--) {
+    const d=dots[i]; d.y+=d.vy;
+    const PY=H-3, px=Math.round(paddleX.current);
+    if (d.y>=PY-0.5&&d.y<PY+1.5&&Math.round(d.x)>=px&&Math.round(d.x)<=px+3) {
+      dots.splice(i,1); onCatch(); continue;
+    }
+    if (d.y>=H) dots.splice(i,1);
+  }
+}
+
+function drawCatcher(ctx: CanvasRenderingContext2D, dots: CatchDot[], paddleX: number, score: number, W: number, H: number, f: number) {
+  ctx.fillStyle="#010508"; ctx.fillRect(SAND_X0,SAND_Y0,W*SAND_PX,H*SAND_PX);
+  for (const d of dots) {
+    const px=SAND_X0+Math.round(d.x)*SAND_PX, py=SAND_Y0+Math.round(d.y)*SAND_PX;
+    const col=Math.sin(f*0.1+d.x*0.5)>0?"#4aa0d8":"#6ac8f0";
+    ctx.globalAlpha=0.15; ctx.fillStyle=col; ctx.fillRect(px-SAND_PX,py,SAND_PX*3,SAND_PX);
+    ctx.globalAlpha=1; ctx.fillStyle=col; ctx.fillRect(px,py,SAND_PX,SAND_PX);
+  }
+  const ppx=SAND_X0+Math.round(paddleX)*SAND_PX, ppy=SAND_Y0+(H-3)*SAND_PX;
+  ctx.fillStyle="#1a4870"; ctx.fillRect(ppx,ppy,4*SAND_PX,2*SAND_PX);
+  ctx.fillStyle="#5ab0e0"; ctx.fillRect(ppx,ppy,4*SAND_PX,2);
+  ctx.fillStyle="#1a4a60"; ctx.font="5px monospace"; ctx.textAlign="left";
+  ctx.fillText(`${score}`,SAND_X0+2,SAND_Y0+7);
+}
+
 // ── Signal map ───────────────────────────────────────────────
 // [lat, lon] center of each country (equirectangular projection)
 const COUNTRY_POS: Record<string, [number, number]> = {
@@ -577,11 +694,24 @@ export function EyeTV() {
   const floatsRef     = useRef<{ y: number; life: number; max: number }[]>([]);
   const tapCountRef   = useRef(0);
 
+  // Multi-channel system
+  const activeChRef   = useRef(1);
+  const sandGrid      = useRef(new Uint8Array(SAND_CW * SAND_CH));
+  const sandBrushRef  = useRef(MAT_SAND);
+  const sandDrawRef   = useRef<{cx:number;cy:number}|null>(null);
+  const sandBurnRef   = useRef(0);
+  const catchDots     = useRef<CatchDot[]>([]);
+  const catchPaddleX  = useRef(16.0);
+  const catchScoreRef = useRef(0);
+  const catchTargetX  = useRef<number|null>(null);
+
   const [phase, setPhase] = useState<"pick" | "play">("pick");
   const [hype, setHype] = useState(0);
   const [myScore, setMyScore] = useState(0);
   const [leaderboard, setLeaderboard] = useState<{ alias: string; clicks: number }[]>([]);
   const [signalMap, setSignalMap] = useState<Record<string, number>>({});
+  const [activeCh, setActiveCh]   = useState(1);
+  const [sandBrush, setSandBrush] = useState(MAT_SAND);
 
   const fetchHype = useCallback(async () => {
     try {
@@ -726,8 +856,41 @@ export function EyeTV() {
       ctx.fillRect(0, 0, W, H);
       drawMonitor(ctx);
 
-      // Priority: milestone channel > random channel > normal states
-      if (channelTimerRef.current > 0) {
+      const ch = activeChRef.current;
+
+      if (ch === 2) {
+        // ── Falling Sand ──────────────────────────────────
+        if (sandDrawRef.current) paintSandGrid(sandGrid.current, SAND_CW, SAND_CH, sandDrawRef.current.cx, sandDrawRef.current.cy, sandBrushRef.current);
+        updateSandGrid(sandGrid.current, SAND_CW, SAND_CH, sandBurnRef);
+        if (sandBurnRef.current >= 5) {
+          const pts = Math.floor(sandBurnRef.current / 5);
+          sandBurnRef.current -= pts * 5;
+          pendingRef.current += pts;
+          hypeRef.current += pts;
+          setHype(h => h + pts);
+          setMyScore(s => s + pts);
+          MILESTONES.forEach((m, mi) => { if (hypeRef.current >= m) passedRef.current.add(mi); });
+        }
+        drawSandGrid(ctx, sandGrid.current, SAND_CW, SAND_CH, f);
+        // Sand label
+        ctx.fillStyle="#0e2030"; ctx.font="5px monospace"; ctx.textAlign="right";
+        ctx.fillText("CH.2 SAND",SAND_X0+SAND_CW*SAND_PX-2, SAND_Y0+SAND_CH*SAND_PX-2);
+
+      } else if (ch === 3) {
+        // ── Signal Catcher ────────────────────────────────
+        updateCatcher(catchDots.current, catchPaddleX, catchTargetX, SAND_CW, SAND_CH, f, () => {
+          catchScoreRef.current++;
+          pendingRef.current++;
+          hypeRef.current++;
+          setHype(h => h + 1);
+          setMyScore(s => s + 1);
+        });
+        drawCatcher(ctx, catchDots.current, catchPaddleX.current, catchScoreRef.current, SAND_CW, SAND_CH, f);
+
+      } else {
+        // ── Channel 1 — Eye TV ───────────────────────────
+        // Priority: milestone channel > random channel > normal states
+        if (channelTimerRef.current > 0) {
         const chIdx     = channelIdxRef.current;
         const maxT      = CH_DURATION[chIdx] - CH_INTRO;
         const remaining = channelTimerRef.current;
@@ -812,6 +975,7 @@ export function EyeTV() {
           ctx.fillText("TAP", 96, 128);
         }
       }
+      } // end ch===1
 
       drawGrain(ctx, W, H);
       rafRef.current = requestAnimationFrame(loop);
@@ -860,6 +1024,36 @@ export function EyeTV() {
     tapCountRef.current++;
   }, []);
 
+  // Multi-channel pointer handling
+  const toCanvasCoords = useCallback((e: React.PointerEvent) => {
+    const canvas = canvasRef.current; if (!canvas) return null;
+    const r = canvas.getBoundingClientRect();
+    return { cx: ((e.clientX-r.left)/r.width)*192, cy: ((e.clientY-r.top)/r.height)*192 };
+  }, []);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    const ch = activeChRef.current;
+    if (ch === 2) {
+      const c = toCanvasCoords(e); if (c) sandDrawRef.current = c;
+    } else if (ch === 3) {
+      const c = toCanvasCoords(e);
+      if (c) catchTargetX.current = (c.cx - SAND_X0) / SAND_PX - 2;
+    } else {
+      handleClick();
+    }
+  }, [handleClick, toCanvasCoords]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    const ch = activeChRef.current;
+    if (ch === 2 && sandDrawRef.current) { const c = toCanvasCoords(e); if (c) sandDrawRef.current = c; }
+    else if (ch === 3) { const c = toCanvasCoords(e); if (c) catchTargetX.current = (c.cx-SAND_X0)/SAND_PX-2; }
+  }, [toCanvasCoords]);
+
+  const handlePointerUp = useCallback(() => {
+    sandDrawRef.current = null;
+    catchTargetX.current = null;
+  }, []);
+
   const pct = Math.min((hype / HYPE_GOAL) * 100, 100);
   const RANK_COLORS = ["#5a9ab8", "#3a7090", "#2a5068", "#1e3a4a"];
   const RANK_PREFIX = ["#1", "#2", "#3", "#4"];
@@ -895,16 +1089,60 @@ export function EyeTV() {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, userSelect: "none" }}>
 
-      {/* Canvas + overlays */}
+      {/* Canvas */}
       <div style={{ position: "relative", width: W, height: W, flexShrink: 0 }}
-        onPointerDown={handleClick}>
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}>
         <canvas
           ref={canvasRef}
           width={192} height={192}
-          style={{ cursor: "crosshair", imageRendering: "pixelated", display: "block", touchAction: "none", width: "100%", height: "100%" }}
+          style={{ cursor: activeCh===2?"crosshair":"default", imageRendering: "pixelated", display: "block", touchAction: "none", width: "100%", height: "100%" }}
         />
-
       </div>
+
+      {/* Channel selector */}
+      <div style={{ display:"flex", gap:6, width:W }}>
+        {([
+          {ch:1, label:"CH.1 EYE"},
+          {ch:2, label:"CH.2 SAND"},
+          {ch:3, label:"CH.3 CATCH"},
+        ] as {ch:number,label:string}[]).map(({ch,label})=>(
+          <button key={ch} onPointerDown={()=>{setActiveCh(ch);activeChRef.current=ch;}} style={{
+            flex:1, fontFamily:"'Press Start 2P', monospace", fontSize:6,
+            background:activeCh===ch?"#0d2030":"#050a0f",
+            border:`1px solid ${activeCh===ch?"#2a6080":"#0e1c28"}`,
+            color:activeCh===ch?"#5a9ab8":"#1e3a4a",
+            padding:"7px 0", cursor:"pointer", touchAction:"none",
+            textShadow:activeCh===ch?"0 0 8px rgba(90,154,184,0.6)":"none",
+          }}>{label}</button>
+        ))}
+      </div>
+
+      {/* Material palette — only in sandbox channel */}
+      {activeCh===2 && (
+        <div style={{ display:"flex", gap:5, flexWrap:"wrap", justifyContent:"center", width:W }}>
+          {([
+            {mat:MAT_SAND,  label:"SAND",  color:"#c8a050"},
+            {mat:MAT_WATER, label:"WATER", color:"#2060c0"},
+            {mat:MAT_FIRE,  label:"FIRE",  color:"#e04010"},
+            {mat:MAT_WOOD,  label:"WOOD",  color:"#6a3a1a"},
+            {mat:MAT_STONE, label:"STONE", color:"#505060"},
+            {mat:MAT_EMPTY, label:"ERASE", color:"#303030"},
+          ] as {mat:number,label:string,color:string}[]).map(({mat,label,color})=>(
+            <button key={mat} onPointerDown={()=>{setSandBrush(mat);sandBrushRef.current=mat;}} style={{
+              fontFamily:"'Press Start 2P', monospace", fontSize:6,
+              background:sandBrush===mat?color:"#050a0f",
+              border:`1px solid ${sandBrush===mat?color:"#0e1c28"}`,
+              color:sandBrush===mat?"#fff":color,
+              padding:"5px 8px", cursor:"pointer", touchAction:"none",
+              boxShadow:sandBrush===mat?`0 0 8px ${color}70`:"none",
+              minWidth:44,
+            }}>{label}</button>
+          ))}
+        </div>
+      )}
 
       <div style={{ width: W, display: "flex", flexDirection: "column", gap: 8 }}>
 
