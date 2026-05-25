@@ -202,7 +202,7 @@ export default function Home() {
   const [expandPhase,  setExpandPhase]  = useState<"idle" | "start" | "growing">("idle");
   const [expandOrigin, setExpandOrigin] = useState({ x: 0, y: 0 });
   const dirRef      = useRef({ dx: 1, dy: 1 });
-  const jumpTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const jumpTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const handleCRTDone = useCallback(() => setCRTDone(true), []);
 
