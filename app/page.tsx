@@ -118,6 +118,80 @@ function PlatformLink({
   );
 }
 
+// ── Tiny animated TV — static → eye → color bars ─────────────
+function EasterEggTV() {
+  const cvRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const cv = cvRef.current; if (!cv) return;
+    const ctx = cv.getContext("2d")!;
+    const W = 32, H = 26;
+    // Cycle: 90fr static | 180fr eye | 90fr colors = 360fr (~6s @ 60fps)
+    const CYCLE = 360;
+    const LOOK: [number,number][] = [[0,0],[2,0],[0,-1],[2,-1],[-2,0],[0,0],[-1,1],[0,0]];
+    let f = 0, rafId = 0;
+
+    const bezel = () => {
+      ctx.fillStyle = "#0b0b10"; ctx.fillRect(0, 0, W, 20);
+      ctx.fillStyle = "#040810"; ctx.fillRect(2, 2, 28, 15);
+      ctx.fillStyle = "#07070e"; ctx.fillRect(13,20, 6, 3);
+      ctx.fillStyle = "#050508"; ctx.fillRect(10,23,12, 3);
+      ctx.fillStyle = "#003820"; ctx.fillRect(28,18, 2, 1);
+    };
+    const scanlines = () => {
+      ctx.globalAlpha = 0.28;
+      ctx.fillStyle = "#000";
+      for (let y = 2; y < 17; y += 2) ctx.fillRect(2, y, 28, 1);
+      ctx.globalAlpha = 1;
+    };
+    const drawStatic = () => {
+      for (let y = 2; y < 17; y++)
+        for (let x = 2; x < 30; x++) {
+          ctx.fillStyle = Math.random() > 0.5 ? "#4a6070" : "#020408";
+          ctx.fillRect(x, y, 1, 1);
+        }
+    };
+    const drawEye = (ef: number) => {
+      const blink = ef % 100 > 95;
+      const [lx, ly] = LOOK[Math.floor(ef / 22) % LOOK.length];
+      ctx.fillStyle = "#6a8ea8"; ctx.fillRect(5, 3, 20, 10);
+      // cut corners
+      ctx.fillStyle = "#040810";
+      ctx.fillRect(5,3,2,2); ctx.fillRect(23,3,2,2);
+      ctx.fillRect(5,11,2,2); ctx.fillRect(23,11,2,2);
+      if (blink) {
+        ctx.fillStyle = "#6a8ea8"; ctx.fillRect(5, 7, 20, 2);
+        ctx.fillStyle = "#040810"; ctx.fillRect(5,3,20,4); ctx.fillRect(5,9,20,4);
+      } else {
+        const cx = 14, cy = 7;
+        ctx.fillStyle = "#0e2030"; ctx.fillRect(cx+lx-1,cy+ly-1,5,5);
+        ctx.fillStyle = "#163040"; ctx.fillRect(cx+lx-1,cy+ly-1,5,1);
+        ctx.fillStyle = "#010306"; ctx.fillRect(cx+lx,  cy+ly,  3,3);
+        ctx.fillStyle = "#6a98c0"; ctx.fillRect(cx+lx,  cy+ly,  1,1);
+      }
+    };
+    const drawColors = () => {
+      const bars = ["#7a5000","#7a7a00","#007a7a","#007a10","#00107a","#7a007a","#7a1000"];
+      const bw = Math.floor(28 / bars.length);
+      bars.forEach((c,i) => { ctx.fillStyle=c; ctx.fillRect(2+i*bw,2,bw,15); });
+    };
+
+    const loop = () => {
+      f = (f + 1) % CYCLE;
+      ctx.clearRect(0,0,W,H);
+      bezel();
+      if      (f < 90)  drawStatic();
+      else if (f < 270) drawEye(f - 90);
+      else              drawColors();
+      scanlines();
+      rafId = requestAnimationFrame(loop);
+    };
+    rafId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
+  return <canvas ref={cvRef} width={32} height={26}
+    style={{ display:"block", width:64, height:52, imageRendering:"pixelated", cursor:"crosshair" }} />;
+}
+
 export default function Home() {
   const [isFractal, setIsFractal] = useState(false);
   const [crtDone,   setCRTDone]   = useState(false);
@@ -156,10 +230,10 @@ export default function Home() {
     const GRID = 32;
     const STEP = 380;
 
-    // Start in the center of the viewport
+    // Start slightly off-center — curious but not dead-center
     setPixelPos({
-      x: Math.floor((window.innerWidth  * 0.50) / GRID) * GRID,
-      y: Math.floor((window.innerHeight * 0.45) / GRID) * GRID,
+      x: Math.floor((window.innerWidth  * 0.42) / GRID) * GRID,
+      y: Math.floor((window.innerHeight * 0.36) / GRID) * GRID,
     });
 
     const step = () => {
@@ -436,39 +510,13 @@ export default function Home() {
           left: pixelPos.x,
           top:  pixelPos.y,
           zIndex: 50,
-          display: "flex",
-          alignItems: "flex-end",
-          gap: 5,
-          opacity: expandPhase !== "idle" ? 0 : 0.45,
-          cursor: "crosshair",
+          opacity: expandPhase !== "idle" ? 0 : 0.28,
           transition: "opacity 0.3s",
-          imageRendering: "pixelated",
         }}
-        onMouseEnter={e => { if (expandPhase === "idle") (e.currentTarget as HTMLElement).style.opacity = "0.9"; }}
-        onMouseLeave={e => { if (expandPhase === "idle") (e.currentTarget as HTMLElement).style.opacity = "0.45"; }}
+        onMouseEnter={e => { if (expandPhase === "idle") (e.currentTarget as HTMLElement).style.opacity = "0.78"; }}
+        onMouseLeave={e => { if (expandPhase === "idle") (e.currentTarget as HTMLElement).style.opacity = "0.28"; }}
       >
-        {/* Tiny pixel-art TV — eye looking right toward dead pixel */}
-        <svg width={32} height={26} viewBox="0 0 32 26" style={{ display: "block", imageRendering: "pixelated" }}>
-          <rect x={0} y={0} width={32} height={20} rx={2} fill="#0b0b10" />
-          <rect x={2} y={2} width={28} height={15} fill="#040810" />
-          <rect x={2} y={4} width={28} height={1} fill="#020408" />
-          <rect x={2} y={8} width={28} height={1} fill="#020408" />
-          <rect x={2} y={12} width={28} height={1} fill="#020408" />
-          <rect x={5} y={3} width={19} height={11} fill="#6a8ea8" />
-          <rect x={18} y={5} width={5} height={7} fill="#0e2030" />
-          <rect x={19} y={7} width={2} height={3} fill="#010306" />
-          <rect x={19} y={7} width={1} height={1} fill="#6a98c0" />
-          <rect x={13} y={20} width={6} height={3} fill="#07070e" />
-          <rect x={10} y={23} width={12} height={3} fill="#05050a" />
-        </svg>
-        {/* Stuck pixel — bright white, rare flicker */}
-        <div style={{
-          width: 8, height: 8,
-          background: "#ffe8c0",
-          animation: "pixel-stuck 6s linear infinite",
-          marginBottom: 4,
-          boxShadow: "0 0 4px 2px rgba(255,232,192,0.6)",
-        }} />
+        <EasterEggTV />
       </div>
 
       {/* Expand overlay — dark circle floods screen on click */}
