@@ -25,7 +25,7 @@ const FRAG = `
     vec2 z = uv * 1.4;
     float escaped = 0.0;
     float smooth_i = 0.0;
-    for (int i = 0; i < 80; i++) {
+    for (int i = 0; i < 48; i++) {
       z = cmul(z, z) + c;
       if (dot(z, z) > 16.0) {
         escaped = 1.0;
@@ -40,7 +40,7 @@ const FRAG = `
       return;
     }
 
-    float n = smooth_i / 80.0;
+    float n = smooth_i / 48.0;
 
     // Electric blue palette — pulse with time
     float pulse = 0.5 + 0.5 * sin(t * 2.1 + n * 12.0);
@@ -100,23 +100,30 @@ export function ShaderAnimation({ className }: ShaderAnimationProps) {
     const uTime = gl.getUniformLocation(prog, "time")
     const uRes  = gl.getUniformLocation(prog, "resolution")
 
+    let resizeTimer: ReturnType<typeof setTimeout>
     const resize = () => {
-      canvas.width  = canvas.clientWidth  || 1
-      canvas.height = canvas.clientHeight || 1
-      gl.viewport(0, 0, canvas.width, canvas.height)
-      gl.uniform2f(uRes, canvas.width, canvas.height)
+      clearTimeout(resizeTimer)
+      resizeTimer = setTimeout(() => {
+        canvas.width  = Math.max(1, Math.floor((canvas.clientWidth  || 1) * 0.4))
+        canvas.height = Math.max(1, Math.floor((canvas.clientHeight || 1) * 0.4))
+        gl.viewport(0, 0, canvas.width, canvas.height)
+        gl.uniform2f(uRes, canvas.width, canvas.height)
+      }, 120)
     }
     resize()
     window.addEventListener("resize", resize)
 
     let t = 0
-    const loop = () => {
+    let lastFrame = 0
+    const loop = (now: number) => {
       animIdRef.current = requestAnimationFrame(loop)
+      if (now - lastFrame < 34) return  // ~30fps cap
+      lastFrame = now
       t += 0.05
       gl.uniform1f(uTime, t)
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
     }
-    loop()
+    loop(0)
 
     return () => {
       cancelAnimationFrame(animIdRef.current)

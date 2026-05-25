@@ -64,10 +64,9 @@ class Renderer {
   }
 
   updateScale() {
-    const dpr = Math.min(1.5, Math.max(1, window.devicePixelRatio));
     const { innerWidth: width, innerHeight: height } = window;
-    this.canvas.width = width * dpr;
-    this.canvas.height = height * dpr;
+    this.canvas.width  = Math.max(1, Math.floor(width  * 0.5));
+    this.canvas.height = Math.max(1, Math.floor(height * 0.5));
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
   }
 
@@ -162,14 +161,21 @@ export const SmokeBackground: React.FC<SmokeBackgroundProps> = ({
     const renderer = new Renderer(canvas, fragmentShaderSource);
     rendererRef.current = renderer;
 
-    const handleResize = () => renderer.updateScale();
-    handleResize();
+    let resizeTimer: ReturnType<typeof setTimeout>;
+    const handleResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => renderer.updateScale(), 120);
+    };
+    renderer.updateScale();
     window.addEventListener("resize", handleResize);
 
     let animId: number;
+    let lastFrame = 0;
     const loop = (now: number) => {
-      renderer.render(now);
       animId = requestAnimationFrame(loop);
+      if (now - lastFrame < 42) return;  // ~24fps cap
+      lastFrame = now;
+      renderer.render(now);
     };
     animId = requestAnimationFrame(loop);
 
