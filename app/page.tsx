@@ -121,7 +121,7 @@ function PlatformLink({
 export default function Home() {
   const [isFractal, setIsFractal] = useState(false);
   const [crtDone,   setCRTDone]   = useState(false);
-  const [smokeHue,  setSmokeHue]  = useState("#8B000F");
+  const [smokeHue,  setSmokeHue]  = useState("#001840");
   const photoRef = useRef<HTMLDivElement>(null);
 
   const handleCRTDone = useCallback(() => setCRTDone(true), []);
@@ -142,7 +142,7 @@ export default function Home() {
 
   // Smoke hue shift — breathes between crimson and dark burgundy every 12s
   useEffect(() => {
-    const hues = ["#8B000F", "#6B0020", "#3D0030", "#6B0020"];
+    const hues = ["#001840", "#000d28", "#002060", "#001030"];
     let i = 0;
     const id = setInterval(() => {
       i = (i + 1) % hues.length;
@@ -178,7 +178,7 @@ export default function Home() {
     <main className="relative w-full min-h-screen overflow-x-hidden md:h-screen md:overflow-hidden">
 
       {/* ── Background ─────────────────────────────────── */}
-      <div className="fixed inset-0 z-0" style={{ backgroundColor: "#0d0002" }}>
+      <div className="fixed inset-0 z-0" style={{ backgroundColor: "#020a18" }}>
         <SmokeBackground smokeColor={smokeHue} />
       </div>
 
@@ -206,14 +206,14 @@ export default function Home() {
         <ShaderAnimation className="w-full h-full" />
       </div>
 
-      {/* Edge crimson bleed + vignette */}
+      {/* Edge blue bleed + vignette */}
       <div
         className="fixed inset-0 z-[6] pointer-events-none"
         style={{
           background: `radial-gradient(ellipse at 50% 50%,
             transparent 28%,
-            rgba(110,0,12,0.32) 65%,
-            rgba(6,0,1,0.88) 100%)`,
+            rgba(0,80,160,0.28) 65%,
+            rgba(1,4,18,0.88) 100%)`,
         }}
       />
 
@@ -303,7 +303,7 @@ export default function Home() {
                 overflow: "hidden",
                 flexShrink: 0,
                 border: "1px solid rgba(245,237,213,0.18)",
-                boxShadow: "0 0 32px rgba(200,16,42,0.38)",
+                boxShadow: "0 0 32px rgba(0,200,255,0.25)",
                 transition: "transform 0.12s ease-out",
               }}
             >
@@ -343,13 +343,13 @@ export default function Home() {
                 href={YOUTUBE_URL}
                 icon={<Youtube size={13} strokeWidth={0} fill="currentColor" />}
                 label="YouTube"
-                iconColor="#FF0000"
+                iconColor="#00c8ff"
               />
               <PlatformLink
                 href={APPLE_MUSIC_URL}
                 icon={<AppleMusicIcon />}
                 label="Apple Music"
-                iconColor="#FC3C44"
+                iconColor="#00c8ff"
               />
               <PlatformLink
                 href={INSTAGRAM_URL}
@@ -377,6 +377,60 @@ export default function Home() {
               Play Track
             </span>
           </GlassButton>
+
+          {/* ── Feed the Signal — standalone CTA ── */}
+          <a
+            href="/tamagotchi"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+              marginTop: 12,
+              padding: "14px 18px",
+              background: "linear-gradient(135deg, #020d22 0%, #041830 100%)",
+              border: "1px solid #00c8ff55",
+              borderRadius: 4,
+              boxShadow: "0 0 24px #00c8ff22, inset 0 0 24px #00c8ff08",
+              textDecoration: "none",
+              transition: "box-shadow 0.2s, border-color 0.2s",
+              cursor: "pointer",
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 0 40px #00c8ff44, inset 0 0 30px #00c8ff14";
+              (e.currentTarget as HTMLElement).style.borderColor = "#00c8ffaa";
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 0 24px #00c8ff22, inset 0 0 24px #00c8ff08";
+              (e.currentTarget as HTMLElement).style.borderColor = "#00c8ff55";
+            }}
+          >
+            <span style={{ fontSize: 32, lineHeight: 1 }}>📺</span>
+            <div style={{ flex: 1 }}>
+              <div
+                className="font-display uppercase"
+                style={{
+                  color: "#00c8ff",
+                  fontSize: "clamp(0.75rem, 2vw, 1rem)",
+                  letterSpacing: "0.28em",
+                  textShadow: "0 0 14px #00c8ffaa",
+                }}
+              >
+                Feed the Signal
+              </div>
+              <div
+                className="font-display uppercase"
+                style={{
+                  color: "#4a7a9b",
+                  fontSize: "0.58rem",
+                  letterSpacing: "0.18em",
+                  marginTop: 3,
+                }}
+              >
+                Click the TV head · join the leaderboard
+              </div>
+            </div>
+            <span style={{ color: "#00c8ff", fontSize: "1.3rem", textShadow: "0 0 10px #00c8ff" }}>→</span>
+          </a>
 
         </section>
       </div>

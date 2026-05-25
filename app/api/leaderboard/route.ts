@@ -1,27 +1,27 @@
-import { sql } from "@vercel/postgres";
 import { NextResponse } from "next/server";
 
-async function ensureTable() {
-  await sql`
-    CREATE TABLE IF NOT EXISTS tama_scores (
-      id        SERIAL PRIMARY KEY,
-      nick      TEXT NOT NULL,
-      score     INTEGER NOT NULL,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `;
-}
+const PI_API = process.env.NEXT_PUBLIC_TAMAGOTCHI_API ?? "";
+
+export const MOCK_USERS = [
+  { rank: 1, alias: "KPOP", clicks: 1204 },
+  { rank: 2, alias: "MRKR", clicks: 988 },
+  { rank: 3, alias: "NEON", clicks: 741 },
+  { rank: 4, alias: "VOID", clicks: 502 },
+  { rank: 5, alias: "PXEL", clicks: 389 },
+  { rank: 6, alias: "LUNA", clicks: 211 },
+  { rank: 7, alias: "FUZZ", clicks: 98 },
+];
+export const MOCK_PET = { happiness: 72, energy: 58, mood: "HAPPY" };
 
 export async function GET() {
-  await ensureTable();
-  const { rows } = await sql`
-    SELECT nick, MAX(score) AS score
-    FROM tama_scores
-    GROUP BY nick
-    ORDER BY score DESC
-    LIMIT 10
-  `;
-  return NextResponse.json(
-    rows.map((r, i) => ({ rank: i + 1, nick: r.nick, score: Number(r.score) }))
-  );
+  if (PI_API) {
+    try {
+      const res = await fetch(`${PI_API}/api/leaderboard`, { next: { revalidate: 10 } });
+      if (res.ok) {
+        const data = await res.json();
+        return NextResponse.json({ ...data, piOnline: true });
+      }
+    } catch { /* fall through */ }
+  }
+  return NextResponse.json({ users: MOCK_USERS, pet: MOCK_PET, piOnline: false });
 }

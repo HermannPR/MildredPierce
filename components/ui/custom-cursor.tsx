@@ -81,7 +81,7 @@ export function CustomCursor() {
           height: 1.5,
           transform: "translateY(-50%)",
           background: "rgba(245,237,213,0.9)",
-          boxShadow: "0 0 6px rgba(200,16,42,0.7)",
+          boxShadow: "0 0 6px rgba(0,200,255,0.7)",
         }} />
         {/* Vertical */}
         <div style={{
@@ -90,7 +90,7 @@ export function CustomCursor() {
           width: 1.5,
           transform: "translateX(-50%)",
           background: "rgba(245,237,213,0.9)",
-          boxShadow: "0 0 6px rgba(200,16,42,0.7)",
+          boxShadow: "0 0 6px rgba(0,200,255,0.7)",
         }} />
       </div>
 
@@ -104,8 +104,8 @@ export function CustomCursor() {
           width: 5,
           height: 5,
           borderRadius: "50%",
-          background: "#C8100A",
-          boxShadow: "0 0 8px 2px rgba(200,16,42,0.9)",
+          background: "#00c8ff",
+          boxShadow: "0 0 8px 2px rgba(0,200,255,0.9)",
           pointerEvents: "none",
           zIndex: 99999,
           willChange: "transform",

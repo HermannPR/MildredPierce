@@ -180,7 +180,14 @@ export function EyeTV() {
   const fetchBoard = useCallback(async () => {
     try {
       const r = await fetch(`${API}/leaderboard`);
-      setBoard(await r.json());
+      const data = await r.json();
+      // handle both legacy array and new {users, pet} format
+      const rows = Array.isArray(data)
+        ? data
+        : (data.users ?? []).map((u: { rank: number; alias: string; clicks: number }) => ({
+            rank: u.rank, nick: u.alias, score: u.clicks,
+          }));
+      setBoard(rows);
     } catch {}
   }, []);
 
