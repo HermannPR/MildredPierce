@@ -153,8 +153,8 @@ export default function Home() {
   // Pixel-grid walk — steps one cell at a time, bounces off edges
   useEffect(() => {
     if (expandPhase !== "idle") return;
-    const GRID = 16;
-    const STEP = 500; // ms per step
+    const GRID = 32;
+    const STEP = 380; // ms per step — fast enough to clearly see grid jumps
 
     // Init position near bottom-right
     setPixelPos({
