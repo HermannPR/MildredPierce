@@ -336,7 +336,7 @@ function drawRandomChannel(ctx: CanvasRenderingContext2D, idx: number, frame: nu
 const SAND_PX = 4, SAND_X0 = 24, SAND_Y0 = 18, SAND_CW = 36, SAND_CH = 30; // kept for signal catcher
 const PF_X=24, PF_Y=18, PF_W=144, PF_H=120;
 const PF_GRAVITY=0.35, PF_SPD=1.8, PF_JUMP_VEL=-5.8, PF_BOUNCE=-8.5;
-const PF_PW=8, PF_PH=8;
+const PF_PW=10, PF_PH=10;
 
 interface PfLevel {
   platforms: {x:number;y:number;w:number}[];
@@ -420,68 +420,90 @@ function pfDraw(
   f: number
 ) {
   const ox=PF_X, oy=PF_Y;
-  // Background — distinctly dark blue, not black
-  ctx.fillStyle="#061828"; ctx.fillRect(ox,oy,PF_W,PF_H);
-  // Subtle star dots
-  ctx.fillStyle="#0e2840";
-  for (let i=0;i<18;i++){
-    const sx=(i*37+f*0.05)%PF_W, sy=(i*19+3)%PF_H;
-    ctx.fillRect(ox+Math.floor(sx),oy+Math.floor(sy),1,1);
-  }
-  // Platforms — clearly visible teal/cyan
+  // Sky gradient — dark navy, clearly different from TV bezel
+  ctx.fillStyle="#001428"; ctx.fillRect(ox,oy,PF_W,PF_H);
+  // Stars
+  ctx.fillStyle="#2a4870";
+  for(let i=0;i<24;i++) ctx.fillRect(ox+((i*47)%PF_W), oy+((i*29)%60), 1, 1);
+  ctx.fillStyle="#3a6090";
+  for(let i=0;i<10;i++) ctx.fillRect(ox+((i*83+11)%PF_W), oy+((i*41+7)%55), 2, 2);
+
+  // Platforms — bright teal, impossible to miss
   for (const p of level.platforms) {
-    ctx.fillStyle="#1a6070"; ctx.fillRect(ox+p.x,oy+p.y,p.w,5);
-    ctx.fillStyle="#40c8e0"; ctx.fillRect(ox+p.x,oy+p.y,p.w,2);
-    ctx.fillStyle="#204858"; ctx.fillRect(ox+p.x,oy+p.y+3,p.w,2);
+    ctx.fillStyle="#104858"; ctx.fillRect(ox+p.x, oy+p.y, p.w, 7);
+    ctx.fillStyle="#00d4f0"; ctx.fillRect(ox+p.x, oy+p.y, p.w, 3);
+    ctx.fillStyle="#007090"; ctx.fillRect(ox+p.x, oy+p.y+3, p.w, 2);
+    ctx.fillStyle="#003848"; ctx.fillRect(ox+p.x, oy+p.y+5, p.w, 2);
   }
+
+  // Mushrooms — bright red cap
   for (const m of level.mushrooms) {
-    const mp=0.7+Math.sin(f*0.1)*0.3;
-    ctx.globalAlpha=mp;
-    ctx.fillStyle="#7a0010"; ctx.fillRect(ox+m.x,oy+m.y,8,6);
-    ctx.fillStyle="#c82030"; ctx.fillRect(ox+m.x+1,oy+m.y,6,3);
-    ctx.fillStyle="#ff6070"; ctx.fillRect(ox+m.x+2,oy+m.y+1,2,2); ctx.fillRect(ox+m.x+5,oy+m.y,1,1);
-    ctx.fillStyle="#3a1010"; ctx.fillRect(ox+m.x+2,oy+m.y+5,4,3);
+    const pulse=0.7+Math.sin(f*0.12)*0.3;
+    ctx.globalAlpha=pulse;
+    ctx.fillStyle="#cc0020"; ctx.fillRect(ox+m.x, oy+m.y, 10, 6);
+    ctx.fillStyle="#ff4060"; ctx.fillRect(ox+m.x+1, oy+m.y, 8, 3);
+    ctx.fillStyle="#ffffff"; ctx.fillRect(ox+m.x+2, oy+m.y+1, 2, 2);
+    ctx.fillStyle="#ffffff"; ctx.fillRect(ox+m.x+6, oy+m.y, 2, 2);
+    ctx.fillStyle="#6a1010"; ctx.fillRect(ox+m.x+2, oy+m.y+5, 6, 4);
     ctx.globalAlpha=1;
   }
-  const gp=0.55+Math.sin(f*0.12)*0.45;
-  ctx.globalAlpha=gp*0.4; ctx.fillStyle="#1a6070";
-  ctx.fillRect(ox+level.goalX-6,oy+level.goalY-6,20,20);
-  ctx.globalAlpha=gp; ctx.fillStyle="#2a9aaa";
-  ctx.fillRect(ox+level.goalX-2,oy+level.goalY-2,12,12);
-  ctx.fillStyle="#60d8e8"; ctx.fillRect(ox+level.goalX+1,oy+level.goalY+1,6,6);
-  ctx.fillStyle="#c0f4fc"; ctx.fillRect(ox+level.goalX+3,oy+level.goalY+3,2,2);
+
+  // Goal — pulsing bright green portal
+  const gp=0.5+Math.sin(f*0.14)*0.5;
+  ctx.globalAlpha=gp*0.35; ctx.fillStyle="#00ff88";
+  ctx.fillRect(ox+level.goalX-4, oy+level.goalY-4, 16, 16);
   ctx.globalAlpha=1;
+  ctx.fillStyle="#00aa55"; ctx.fillRect(ox+level.goalX, oy+level.goalY, 8, 8);
+  ctx.fillStyle="#00ff88"; ctx.fillRect(ox+level.goalX+1, oy+level.goalY+1, 6, 6);
+  ctx.fillStyle="#ccffdd"; ctx.fillRect(ox+level.goalX+2, oy+level.goalY+2, 4, 4);
+  ctx.fillStyle="#ffffff"; ctx.fillRect(ox+level.goalX+3, oy+level.goalY+3, 2, 2);
+  ctx.globalAlpha=gp;
+  ctx.fillStyle="#00ff88"; ctx.font="5px monospace"; ctx.textAlign="center";
+  ctx.fillText("▲",ox+level.goalX+4, oy+level.goalY-2);
+  ctx.globalAlpha=1;
+
+  // Eye enemy — big bright red
   const ex=Math.round(eye.x), ey2=Math.round(eye.y);
-  ctx.globalAlpha=0.2+Math.sin(f*0.09)*0.1;
-  ctx.fillStyle="#b01020"; ctx.fillRect(ox+ex-5,oy+ey2-5,20,18);
+  const ep=0.7+Math.sin(f*0.1)*0.3;
+  ctx.globalAlpha=ep*0.4; ctx.fillStyle="#ff0020";
+  ctx.fillRect(ox+ex-3, oy+ey2-3, 16, 14);
   ctx.globalAlpha=1;
-  ctx.fillStyle="#8a1020"; ctx.fillRect(ox+ex,oy+ey2,10,8);
-  ctx.fillStyle="#e02840"; ctx.fillRect(ox+ex+2,oy+ey2+1,6,5);
+  ctx.fillStyle="#cc0010"; ctx.fillRect(ox+ex, oy+ey2, 10, 10);
+  ctx.fillStyle="#ff2030"; ctx.fillRect(ox+ex+1, oy+ey2+1, 8, 8);
+  ctx.fillStyle="#ff8090"; ctx.fillRect(ox+ex+2, oy+ey2+2, 4, 4);
   const pd=eye.vx>0?1:0;
-  ctx.fillStyle="#030306"; ctx.fillRect(ox+ex+3+pd,oy+ey2+2,3,3);
-  ctx.fillStyle="#ff8090"; ctx.fillRect(ox+ex+3+pd,oy+ey2+2,1,1);
+  ctx.fillStyle="#110008"; ctx.fillRect(ox+ex+3+pd, oy+ey2+3, 3, 4);
+  ctx.fillStyle="#ffffff"; ctx.fillRect(ox+ex+3+pd, oy+ey2+3, 1, 1);
+
+  // Player — bright yellow, 10×10
   const pa=Math.round(player.x), pb=Math.round(player.y);
-  if (phase==="dead") { ctx.globalAlpha=0.5+Math.sin(f*0.3)*0.3; ctx.fillStyle="#ff2020"; }
-  else if (phase==="win") { ctx.globalAlpha=0.6+Math.sin(f*0.25)*0.4; ctx.fillStyle="#50e0c0"; }
-  else { ctx.globalAlpha=1; ctx.fillStyle="#5ab0e0"; }
-  ctx.fillRect(ox+pa,oy+pb,PF_PW,PF_PH);
+  if (phase==="dead")      { ctx.fillStyle="#ff3030"; }
+  else if (phase==="win")  { ctx.fillStyle="#00ffcc"; }
+  else                     { ctx.fillStyle="#ffe050"; }
+  ctx.fillRect(ox+pa, oy+pb, 10, 10);
+  ctx.fillStyle="#fff8c0"; ctx.fillRect(ox+pa+1, oy+pb+1, 8, 4);
+  ctx.fillStyle="#221800"; ctx.fillRect(ox+pa+2, oy+pb+2, 2, 2);
+  ctx.fillStyle="#221800"; ctx.fillRect(ox+pa+6, oy+pb+2, 2, 2);
+  ctx.fillStyle="#aa7000"; ctx.fillRect(ox+pa, oy+pb+8, 10, 2);
+
+  // Level label
   ctx.globalAlpha=1;
-  ctx.fillStyle="#e8f4ff"; ctx.fillRect(ox+pa+2,oy+pb+2,3,2);
-  ctx.fillStyle="#000814"; ctx.fillRect(ox+pa+3,oy+pb+2,1,1);
+  ctx.fillStyle="#00d4f0"; ctx.font="bold 7px monospace"; ctx.textAlign="left";
+  ctx.fillText(`LV${levelIdx+1}`, ox+3, oy+9);
+
+  // Overlay for dead / win
   if (phase==="dead") {
-    ctx.globalAlpha=0.88; ctx.fillStyle="#020406"; ctx.fillRect(ox+18,oy+42,108,32); ctx.globalAlpha=1;
-    ctx.fillStyle="#c02020"; ctx.font="7px monospace"; ctx.textAlign="center";
+    ctx.globalAlpha=0.85; ctx.fillStyle="#100008"; ctx.fillRect(ox+16,oy+40,112,36); ctx.globalAlpha=1;
+    ctx.fillStyle="#ff4444"; ctx.font="bold 8px monospace"; ctx.textAlign="center";
     ctx.fillText("CAUGHT!",ox+72,oy+56);
-    ctx.fillStyle="#3a5870"; ctx.font="5px monospace"; ctx.fillText("TAP TO RETRY",ox+72,oy+68);
+    ctx.fillStyle="#aaaaaa"; ctx.font="6px monospace"; ctx.fillText("TAP TO RETRY",ox+72,oy+70);
   } else if (phase==="win") {
-    ctx.globalAlpha=0.88; ctx.fillStyle="#020406"; ctx.fillRect(ox+14,oy+42,116,32); ctx.globalAlpha=1;
-    ctx.fillStyle="#50d0b0"; ctx.font="7px monospace"; ctx.textAlign="center";
-    ctx.fillText(`+${PF_LEVELS[levelIdx].reward} SIGNAL`,ox+72,oy+56);
-    ctx.fillStyle="#3a8090"; ctx.font="5px monospace";
-    ctx.fillText(levelIdx<3?"TAP FOR NEXT":"ALL CLEAR",ox+72,oy+68);
+    ctx.globalAlpha=0.85; ctx.fillStyle="#001810"; ctx.fillRect(ox+12,oy+40,120,36); ctx.globalAlpha=1;
+    ctx.fillStyle="#00ff88"; ctx.font="bold 8px monospace"; ctx.textAlign="center";
+    ctx.fillText(`+${PF_LEVELS[levelIdx].reward} HYPE`,ox+72,oy+56);
+    ctx.fillStyle="#aaffcc"; ctx.font="6px monospace";
+    ctx.fillText(levelIdx<3?"TAP FOR NEXT":"ALL CLEAR",ox+72,oy+70);
   }
-  ctx.globalAlpha=0.7; ctx.fillStyle="#0e2030"; ctx.font="5px monospace"; ctx.textAlign="left";
-  ctx.fillText(`LV${levelIdx+1}`,ox+2,oy+PF_H-2); ctx.globalAlpha=1;
 }
 
 
