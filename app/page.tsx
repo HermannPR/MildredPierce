@@ -460,23 +460,22 @@ export default function Home() {
           <rect x={13} y={20} width={6} height={3} fill="#07070e" />
           <rect x={10} y={23} width={12} height={3} fill="#05050a" />
         </svg>
-        {/* RGB dead pixel */}
+        {/* Dead pixel — slow color cycle */}
         <div style={{
           width: 8, height: 8,
-          background: "hsl(0,100%,55%)",
-          animation: "hue-spin 1.5s linear infinite",
+          background: "hsl(0,80%,55%)",
+          animation: "hue-spin 5s linear infinite",
           marginBottom: 4,
         }} />
       </div>
 
-      {/* Expand overlay — RGB circle that floods the screen on click */}
+      {/* Expand overlay — dark circle floods screen on click */}
       {expandPhase !== "idle" && (
         <div style={{
           position: "fixed",
           inset: 0,
           zIndex: 9990,
-          background: "hsl(0,100%,55%)",
-          animation: "hue-spin 0.22s linear infinite",
+          background: "#020a18",
           clipPath: expandPhase === "growing"
             ? `circle(200vmax at ${expandOrigin.x}px ${expandOrigin.y}px)`
             : `circle(8px at ${expandOrigin.x}px ${expandOrigin.y}px)`,
