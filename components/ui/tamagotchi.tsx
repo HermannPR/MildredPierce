@@ -420,13 +420,19 @@ function pfDraw(
   f: number
 ) {
   const ox=PF_X, oy=PF_Y;
-  ctx.fillStyle="#020508"; ctx.fillRect(ox,oy,PF_W,PF_H);
-  ctx.strokeStyle="#040a10"; ctx.lineWidth=1;
-  for (let gx=0;gx<=PF_W;gx+=16){ctx.beginPath();ctx.moveTo(ox+gx,oy);ctx.lineTo(ox+gx,oy+PF_H);ctx.stroke();}
-  for (let gy=0;gy<=PF_H;gy+=16){ctx.beginPath();ctx.moveTo(ox,oy+gy);ctx.lineTo(ox+PF_W,oy+gy);ctx.stroke();}
+  // Background — distinctly dark blue, not black
+  ctx.fillStyle="#061828"; ctx.fillRect(ox,oy,PF_W,PF_H);
+  // Subtle star dots
+  ctx.fillStyle="#0e2840";
+  for (let i=0;i<18;i++){
+    const sx=(i*37+f*0.05)%PF_W, sy=(i*19+3)%PF_H;
+    ctx.fillRect(ox+Math.floor(sx),oy+Math.floor(sy),1,1);
+  }
+  // Platforms — clearly visible teal/cyan
   for (const p of level.platforms) {
-    ctx.fillStyle="#0e2030"; ctx.fillRect(ox+p.x,oy+p.y,p.w,5);
-    ctx.fillStyle="#1a3850"; ctx.fillRect(ox+p.x,oy+p.y,p.w,1);
+    ctx.fillStyle="#1a6070"; ctx.fillRect(ox+p.x,oy+p.y,p.w,5);
+    ctx.fillStyle="#40c8e0"; ctx.fillRect(ox+p.x,oy+p.y,p.w,2);
+    ctx.fillStyle="#204858"; ctx.fillRect(ox+p.x,oy+p.y+3,p.w,2);
   }
   for (const m of level.mushrooms) {
     const mp=0.7+Math.sin(f*0.1)*0.3;
@@ -449,11 +455,11 @@ function pfDraw(
   ctx.globalAlpha=0.2+Math.sin(f*0.09)*0.1;
   ctx.fillStyle="#b01020"; ctx.fillRect(ox+ex-5,oy+ey2-5,20,18);
   ctx.globalAlpha=1;
-  ctx.fillStyle="#5a0010"; ctx.fillRect(ox+ex,oy+ey2,10,8);
-  ctx.fillStyle="#b01828"; ctx.fillRect(ox+ex+2,oy+ey2+1,6,5);
+  ctx.fillStyle="#8a1020"; ctx.fillRect(ox+ex,oy+ey2,10,8);
+  ctx.fillStyle="#e02840"; ctx.fillRect(ox+ex+2,oy+ey2+1,6,5);
   const pd=eye.vx>0?1:0;
-  ctx.fillStyle="#040408"; ctx.fillRect(ox+ex+3+pd,oy+ey2+2,3,3);
-  ctx.fillStyle="#ff3050"; ctx.fillRect(ox+ex+3+pd,oy+ey2+2,1,1);
+  ctx.fillStyle="#030306"; ctx.fillRect(ox+ex+3+pd,oy+ey2+2,3,3);
+  ctx.fillStyle="#ff8090"; ctx.fillRect(ox+ex+3+pd,oy+ey2+2,1,1);
   const pa=Math.round(player.x), pb=Math.round(player.y);
   if (phase==="dead") { ctx.globalAlpha=0.5+Math.sin(f*0.3)*0.3; ctx.fillStyle="#ff2020"; }
   else if (phase==="win") { ctx.globalAlpha=0.6+Math.sin(f*0.25)*0.4; ctx.fillStyle="#50e0c0"; }
@@ -1257,7 +1263,7 @@ export function EyeTV() {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, userSelect: "none" }}>
 
-      {/* Canvas + channel buttons overlaid on screen */}
+      {/* Canvas */}
       <div style={{ position: "relative", width: W, height: W, flexShrink: 0 }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -1268,24 +1274,24 @@ export function EyeTV() {
           width={192} height={192}
           style={{ imageRendering: "pixelated", display: "block", touchAction: "none", width: "100%", height: "100%" }}
         />
-        {/* Channel buttons glowing over TV screen */}
-        <div style={{ position:"absolute", bottom:"7%", left:0, right:0, display:"flex", justifyContent:"center", gap:"3%", pointerEvents:"none" }}>
-          {([{ch:1,label:"CH.1"},{ch:2,label:"CH.2"},{ch:3,label:"CH.3"}] as {ch:number;label:string}[]).map(({ch,label})=>(
-            <button key={ch}
-              onPointerDown={(e)=>{ e.stopPropagation(); setActiveCh(ch); activeChRef.current=ch; }}
-              style={{
-                pointerEvents:"all",
-                fontFamily:"'Press Start 2P', monospace", fontSize:"clamp(5px,2vw,8px)",
-                background: activeCh===ch ? "rgba(8,24,44,0.95)" : "rgba(2,6,14,0.82)",
-                border:`1px solid ${activeCh===ch?"#3a7898":"#0d1c2a"}`,
-                color: activeCh===ch ? "#6ab8d8" : "#1a3040",
-                padding:"4px 10px", cursor:"pointer", touchAction:"none",
-                boxShadow: activeCh===ch ? "0 0 12px rgba(58,120,152,0.8), inset 0 0 8px rgba(40,90,130,0.3)" : "none",
-                textShadow: activeCh===ch ? "0 0 10px rgba(106,184,216,1)" : "none",
-                borderRadius:2, letterSpacing:"0.1em",
-              }}>{label}</button>
-          ))}
-        </div>
+      </div>
+
+      {/* Channel selector — standalone row, reliable tap targets */}
+      <div style={{ display:"flex", gap:8, width:W }}>
+        {([{ch:1,label:"CH.1 EYE"},{ch:2,label:"CH.2 RUN"},{ch:3,label:"CH.3 CATCH"}] as {ch:number,label:string}[]).map(({ch,label})=>(
+          <button key={ch}
+            onPointerDown={()=>{ setActiveCh(ch); activeChRef.current=ch; }}
+            style={{
+              flex:1, fontFamily:"'Press Start 2P', monospace", fontSize:"clamp(6px,2vw,9px)",
+              background: activeCh===ch ? "#0a1e34" : "#050a10",
+              border:`2px solid ${activeCh===ch?"#3a8aaa":"#0e1c28"}`,
+              color: activeCh===ch ? "#6ab8d8" : "#1e3a4a",
+              padding:"10px 0", cursor:"pointer", touchAction:"none",
+              boxShadow: activeCh===ch ? "0 0 14px rgba(58,138,170,0.7)" : "none",
+              textShadow: activeCh===ch ? "0 0 10px rgba(106,184,216,0.9)" : "none",
+              letterSpacing:"0.08em",
+            }}>{label}</button>
+        ))}
       </div>
 
       {/* Fixed L / R side buttons — platformer only */}
