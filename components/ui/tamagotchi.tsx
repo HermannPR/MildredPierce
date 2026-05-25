@@ -345,6 +345,7 @@ const SAND_COLORS: Record<number, string[]> = {
 };
 
 function updateSandGrid(g: Uint8Array, W: number, H: number, burnPts: { current: number }) {
+  // Sand + water: bottom-to-top so falling particles cascade naturally
   for (let y = H-1; y >= 0; y--) {
     const flip = Math.random() > 0.5;
     for (let xi = 0; xi < W; xi++) {
@@ -366,7 +367,17 @@ function updateSandGrid(g: Uint8Array, W: number, H: number, burnPts: { current:
           if (x+dx<0||x+dx>=W) continue;
           if (!g[y*W+(x+dx)]){g[y*W+(x+dx)]=MAT_WATER;g[i]=0;break;}
         }
-      } else if (m === MAT_FIRE) {
+      }
+    }
+  }
+  // Fire + smoke: top-to-bottom so upward movement doesn't double-process
+  for (let y = 0; y < H; y++) {
+    const flip = Math.random() > 0.5;
+    for (let xi = 0; xi < W; xi++) {
+      const x = flip ? xi : W-1-xi;
+      const i = y*W+x, m = g[i];
+      if (!m) continue;
+      if (m === MAT_FIRE) {
         let out=false;
         for (const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]] as [number,number][]) {
           const nx=x+dx,ny=y+dy;
@@ -569,7 +580,6 @@ function NamePicker({ onConfirm }: { onConfirm: (nick: string) => void }) {
     });
   };
 
-  // Arrow keys navigate slots / cycle letters — no typing
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if      (e.key === "ArrowLeft")  setCursor(c => Math.max(0, c - 1));
@@ -577,6 +587,17 @@ function NamePicker({ onConfirm }: { onConfirm: (nick: string) => void }) {
       else if (e.key === "ArrowUp")   { e.preventDefault(); cycle(cursor, -1); }
       else if (e.key === "ArrowDown") { e.preventDefault(); cycle(cursor,  1); }
       else if (e.key === "Enter")      onConfirm(chars.join(""));
+      else if (e.key === "Backspace") {
+        setCursor(c => {
+          const prev = Math.max(0, c - 1);
+          setChars(ch => { const n = [...ch]; n[prev] = "A"; return n; });
+          return prev;
+        });
+      } else if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+        const letter = e.key.toUpperCase();
+        setChars(prev => { const n = [...prev]; n[cursor] = letter; return n; });
+        setCursor(c => Math.min(3, c + 1));
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
