@@ -1,7 +1,7 @@
 import { sql } from "@vercel/postgres";
 import { NextResponse } from "next/server";
 
-export const HYPE_GOAL = 50_000;
+export const HYPE_GOAL = 20_000;
 
 async function ensureTable() {
   await sql`

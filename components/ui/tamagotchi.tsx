@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
 const PX         = 6;
-const HYPE_GOAL  = 50_000;
+const HYPE_GOAL  = 20_000;
 const COOLDOWN_MS = 800;
 
 // ── Palette — muted, eerie, cinematic ───────────────────────
