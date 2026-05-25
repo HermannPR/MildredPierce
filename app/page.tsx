@@ -359,6 +359,57 @@ export default function Home() {
         </section>
       </div>
 
+      {/* ── Easter egg — dead pixel + tiny TV → /game ── */}
+      <a
+        href="/game"
+        style={{
+          position: "fixed",
+          bottom: 14,
+          right: 14,
+          zIndex: 50,
+          display: "flex",
+          alignItems: "flex-end",
+          gap: 3,
+          opacity: 0.22,
+          transition: "opacity 0.5s",
+          textDecoration: "none",
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.75"; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.22"; }}
+      >
+        {/* Tiny pixel-art TV — eye looking right toward the dead pixel */}
+        <svg
+          width={20} height={16}
+          viewBox="0 0 20 16"
+          style={{ display: "block", imageRendering: "pixelated" }}
+        >
+          <rect x={0} y={0} width={20} height={12} rx={1} fill="#0b0b10" />
+          <rect x={1} y={1} width={18} height={9} fill="#040810" />
+          <rect x={1} y={2} width={18} height={1} fill="#020408" />
+          <rect x={1} y={6} width={18} height={1} fill="#020408" />
+          {/* eye white */}
+          <rect x={4} y={2} width={11} height={6} fill="#6a8ea8" />
+          {/* iris — shifted right toward the dead pixel */}
+          <rect x={11} y={3} width={3} height={4} fill="#0e2030" />
+          {/* pupil + shine */}
+          <rect x={12} y={4} width={1} height={2} fill="#010306" />
+          <rect x={12} y={4} width={1} height={1} fill="#6a98c0" />
+          {/* stand */}
+          <rect x={8} y={12} width={4} height={2} fill="#07070e" />
+          <rect x={6} y={14} width={8} height={2} fill="#05050a" />
+        </svg>
+        {/* RGB dead pixel */}
+        <div
+          style={{
+            width: 4,
+            height: 4,
+            background: "hsl(0,100%,55%)",
+            animation: "hue-spin 1.5s linear infinite",
+            marginBottom: 2,
+          }}
+        />
+      </a>
+
       {/* ── CRT intro ── */}
       {!crtDone && <CRTIntro onComplete={handleCRTDone} />}
 

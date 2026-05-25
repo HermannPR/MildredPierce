@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 
-const PX         = 6;
-const HYPE_GOAL  = 20_000;
+const PX          = 6;
+const HYPE_GOAL   = 20_000;
 const COOLDOWN_MS = 800;
+const MILESTONES  = [5_000, 10_000, 15_000, 20_000];
 
-// ── Palette — muted, eerie, cinematic ───────────────────────
 const C = {
   bg:       "#050708",
   bezel:    "#0b0b10",
@@ -49,58 +49,41 @@ function makeNoise(): Noise[] {
   }));
 }
 
-// Pupil offset [dx, dy] from eye center
 const LOOK_OFFSET: Record<LookDir, [number, number]> = {
-  c:  [ 0,  0],
-  r:  [ 2,  0],
-  l:  [-2,  0],
-  u:  [ 0, -1],
-  d:  [ 0,  1],
-  ur: [ 2, -1],
-  ul: [-2, -1],
-  dl: [-2,  1],
+  c:  [ 0,  0], r:  [ 2,  0], l:  [-2,  0], u:  [ 0, -1],
+  d:  [ 0,  1], ur: [ 2, -1], ul: [-2, -1], dl: [-2,  1],
 };
 
-// Slow, deliberate — eerie watching quality
 const LOOK_SEQ: [LookDir, number][] = [
   ["c", 120], ["r", 38], ["c", 55], ["l", 32], ["c", 90],
   ["u", 28],  ["ur", 22], ["c", 100], ["dl", 24], ["c", 75],
   ["u", 22],  ["c", 110],
 ];
 
-// ── Monitor ──────────────────────────────────────────────────
 function drawMonitor(ctx: CanvasRenderingContext2D) {
   rect(ctx, 2, 1, 28, 26, C.bezel);
   for (let x = 2; x < 30; x++) px(ctx, x, 1, C.bezelHi);
   for (let y = 2; y < 27; y++) px(ctx, 2, y, C.bezelHi);
   for (let x = 2; x < 30; x++) px(ctx, x, 26, C.bezelSh);
   for (let y = 1; y < 27; y++) px(ctx, 29, y, C.bezelSh);
-
   rect(ctx, 4, 3, 24, 20, C.screen);
-  for (let row = 3; row < 23; row += 2)
-    rect(ctx, 4, row, 24, 1, C.scanLine);
-
+  for (let row = 3; row < 23; row += 2) rect(ctx, 4, row, 24, 1, C.scanLine);
   rect(ctx, 14, 27, 4, 2, C.stand);
   rect(ctx, 9,  29, 14, 2, C.standBase);
   px(ctx, 27, 25, C.led);
 }
 
-// ── Eye ──────────────────────────────────────────────────────
 function drawEye(ctx: CanvasRenderingContext2D, blink: boolean, look: LookDir, wide: boolean) {
   const ex = 16, ey = 13;
   const [lx, ly] = LOOK_OFFSET[look];
   const topRow = wide ? ey - 4 : ey - 3;
   const height  = wide ? 9     : 7;
 
-  // Phosphor bloom — faint halo
   ctx.globalAlpha = 0.07;
   rect(ctx, 9, topRow - 1, 14, height + 2, C.eyeWhite);
   ctx.globalAlpha = 1;
 
-  if (blink) {
-    rect(ctx, 10, ey, 12, 1, C.eyeWhite);
-    return;
-  }
+  if (blink) { rect(ctx, 10, ey, 12, 1, C.eyeWhite); return; }
 
   rect(ctx, 10, topRow, 12, height, C.eyeWhite);
   px(ctx, 10, topRow,          C.screen); px(ctx, 21, topRow,          C.screen);
@@ -111,7 +94,6 @@ function drawEye(ctx: CanvasRenderingContext2D, blink: boolean, look: LookDir, w
   rect(ctx, ex-2+lx, ey-2+ly, 5, 5, C.iris);
   for (let i = 0; i < 5; i++) px(ctx, ex-2+lx+i, ey-2+ly, C.irisHi);
   px(ctx, ex-2+lx, ey-1+ly, C.irisHi);
-
   rect(ctx, ex-1+lx, ey-1+ly, 3, 3, C.pupil);
   px(ctx, ex-1+lx, ey-1+ly, C.shine);
 }
@@ -121,8 +103,6 @@ function drawSleepEye(ctx: CanvasRenderingContext2D) {
   rect(ctx, ex-4, ey+2, 9, 1, C.eyeWhite);
   px(ctx, ex-3, ey+1, C.eyeWhite);
   px(ctx, ex+4, ey+1, C.eyeWhite);
-
-  // zzz droop
   ctx.globalAlpha = 0.4;
   rect(ctx, ex-1, ey-2, 3, 1, C.zzz);
   ctx.globalAlpha = 1;
@@ -135,6 +115,69 @@ function drawGrain(ctx: CanvasRenderingContext2D, W: number, H: number) {
     ctx.fillRect(Math.random() * W, Math.random() * H, PX, PX);
   }
   ctx.globalAlpha = 1;
+}
+
+function drawStaticBurst(ctx: CanvasRenderingContext2D) {
+  for (let y = 3; y < 23; y++) {
+    for (let x = 4; x < 28; x++) {
+      const v = Math.random();
+      px(ctx, x, y, v > 0.55 ? "#a0aab4" : v > 0.28 ? "#060a0e" : "#1a2830");
+    }
+  }
+}
+
+function drawChannelCard(ctx: CanvasRenderingContext2D, chIdx: number, timer: number) {
+  switch (chIdx) {
+    case 0: {
+      // 5k — horizontal SMPTE bars
+      const bars = ["#c89000","#c8c800","#00c8c8","#00c820","#0020c8","#c800c8","#c80020"];
+      for (let y = 3; y < 23; y++) {
+        const b = bars[Math.floor((y - 3) * bars.length / 20) % bars.length];
+        for (let x = 4; x < 28; x++) px(ctx, x, y, b);
+      }
+      break;
+    }
+    case 1: {
+      // 10k — vertical bars
+      const bars = ["#c80020","#c87000","#c8c800","#00b820","#0028c8","#6000c8"];
+      for (let x = 4; x < 28; x++) {
+        const b = bars[Math.floor((x - 4) * bars.length / 24) % bars.length];
+        for (let y = 3; y < 23; y++) px(ctx, x, y, b);
+      }
+      break;
+    }
+    case 2: {
+      // 15k — checkerboard with concentric rings
+      for (let y = 3; y < 23; y++) {
+        for (let x = 4; x < 28; x++) {
+          const even = ((x - 4) + (y - 3)) % 2 === 0;
+          px(ctx, x, y, even ? "#0e1c28" : "#040810");
+        }
+      }
+      const cx = 16, cy = 13;
+      [[8,"#1a3040"],[5,"#2a4858"],[2,"#6a8ea8"]] .forEach(([r, rc]) => {
+        for (let y = 3; y < 23; y++) for (let x = 4; x < 28; x++) {
+          if (Math.round(Math.sqrt((x-cx)**2+(y-cy)**2)) === r)
+            px(ctx, x, y, rc as string);
+        }
+      });
+      break;
+    }
+    case 3: {
+      // 20k goal — deep pulsing blue
+      const pulse = Math.sin((150 - timer) * 0.12) * 0.5 + 0.5;
+      const b = Math.round(40 + pulse * 120);
+      const g = Math.round(pulse * 45);
+      ctx.fillStyle = `rgb(0,${g},${b})`;
+      ctx.fillRect(4 * PX, 3 * PX, 24 * PX, 20 * PX);
+      if (pulse > 0.65) {
+        px(ctx, 13, 13, "#6a98c0");
+        px(ctx, 16, 13, "#6a98c0");
+        px(ctx, 19, 13, "#6a98c0");
+      }
+      break;
+    }
+  }
 }
 
 // ── Component ────────────────────────────────────────────────
@@ -152,21 +195,45 @@ export function EyeTV() {
   const lookStep    = useRef(0);
   const lookCount   = useRef(LOOK_SEQ[0][1]);
 
+  const channelTimerRef = useRef(0);
+  const channelIdxRef   = useRef(0);
+  const passedRef       = useRef<Set<number>>(new Set());
+  const hypeRef         = useRef(0);
+
   const [hype, setHype] = useState(0);
+  const [leaderboard, setLeaderboard] = useState<{ alias: string; clicks: number }[]>([]);
 
   const fetchHype = useCallback(async () => {
     try {
       const r = await fetch("/api/hype");
       const d = await r.json();
-      setHype(Number(d.total ?? 0));
+      const n = Number(d.total ?? 0);
+      setHype(n);
+      hypeRef.current = n;
+      MILESTONES.forEach((m, i) => { if (n >= m) passedRef.current.add(i); });
+    } catch {}
+  }, []);
+
+  const fetchLeaderboard = useCallback(async () => {
+    try {
+      const r = await fetch("/api/leaderboard");
+      const d = await r.json();
+      if (Array.isArray(d.users)) {
+        setLeaderboard(d.users.slice(0, 4).map((u: { alias: string; clicks: number }) => ({
+          alias: String(u.alias).slice(0, 4).toUpperCase(),
+          clicks: Number(u.clicks),
+        })));
+      }
     } catch {}
   }, []);
 
   useEffect(() => {
     fetchHype();
-    const id = setInterval(fetchHype, 15_000);
-    return () => clearInterval(id);
-  }, [fetchHype]);
+    fetchLeaderboard();
+    const hypeId = setInterval(fetchHype, 15_000);
+    const lbId   = setInterval(fetchLeaderboard, 30_000);
+    return () => { clearInterval(hypeId); clearInterval(lbId); };
+  }, [fetchHype, fetchLeaderboard]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -188,14 +255,12 @@ export function EyeTV() {
       }
       stateRef.current = st;
 
-      // Blink — rare
       let eyeOpen = true;
       if (st === "idle" || st === "active") {
         blinkTimer.current = (blinkTimer.current + 1) % 240;
         eyeOpen = blinkTimer.current < 233;
       }
 
-      // Look sequence
       let look: LookDir = "c";
       if (st === "idle" || st === "active") {
         lookCount.current--;
@@ -218,7 +283,14 @@ export function EyeTV() {
       ctx.fillRect(0, 0, W, H);
       drawMonitor(ctx);
 
-      if (st === "glitch") {
+      if (channelTimerRef.current > 0) {
+        if (channelTimerRef.current > 120) {
+          drawStaticBurst(ctx);
+        } else {
+          drawChannelCard(ctx, channelIdxRef.current, channelTimerRef.current);
+        }
+        channelTimerRef.current--;
+      } else if (st === "glitch") {
         noiseRef.current.forEach(n => px(ctx, n.x, n.y, n.c));
       } else if (st === "sleep") {
         drawSleepEye(ctx);
@@ -252,11 +324,27 @@ export function EyeTV() {
     lastClick.current = Date.now();
     setTimeout(() => { cooldownRef.current = false; }, COOLDOWN_MS);
 
+    const prev = hypeRef.current;
+    const next = prev + 1;
+    hypeRef.current = next;
+
+    for (let i = 0; i < MILESTONES.length; i++) {
+      if (prev < MILESTONES[i] && next >= MILESTONES[i] && !passedRef.current.has(i)) {
+        passedRef.current.add(i);
+        channelTimerRef.current = 150;
+        channelIdxRef.current = i;
+        break;
+      }
+    }
+
     setHype(h => h + 1);
     try {
       const r = await fetch("/api/hype", { method: "POST" });
       const d = await r.json();
-      if (d.total != null) setHype(Number(d.total));
+      if (d.total != null) {
+        setHype(Number(d.total));
+        hypeRef.current = Number(d.total);
+      }
     } catch {}
   }, []);
 
@@ -291,6 +379,24 @@ export function EyeTV() {
         }}>
           HYPE {hype.toLocaleString()} / {HYPE_GOAL.toLocaleString()}
         </p>
+
+        {leaderboard.length > 0 && (
+          <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
+            {leaderboard.map((entry, i) => (
+              <div key={i} style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontFamily: "'Press Start 2P', monospace",
+                fontSize: 6,
+                color: i === 0 ? "#1e3a4a" : "#0e1820",
+                letterSpacing: "0.08em",
+              }}>
+                <span>{entry.alias.padEnd(4)}</span>
+                <span>{entry.clicks.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

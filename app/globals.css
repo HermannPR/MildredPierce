@@ -50,6 +50,11 @@ body::before {
 }
 
 
+/* RGB dead pixel easter egg */
+@keyframes hue-spin {
+  to { filter: hue-rotate(360deg); }
+}
+
 /* Background breathe — fractal + smoke pulse */
 @keyframes bg-breathe {
   0%, 100% { opacity: 0.38; }
