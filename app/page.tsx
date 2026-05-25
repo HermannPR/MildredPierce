@@ -123,9 +123,12 @@ export default function Home() {
   const [crtDone,   setCRTDone]   = useState(false);
   const [smokeHue,  setSmokeHue]  = useState("#001840");
 
-  // Dead pixel easter egg — expand-to-fill transition
+  // Dead pixel easter egg
+  const [pixelPos,     setPixelPos]     = useState({ x: 120, y: 120 });
   const [expandPhase,  setExpandPhase]  = useState<"idle" | "start" | "growing">("idle");
   const [expandOrigin, setExpandOrigin] = useState({ x: 0, y: 0 });
+  const dirRef      = useRef({ dx: 1, dy: 1 });
+  const jumpTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const handleCRTDone = useCallback(() => setCRTDone(true), []);
 
@@ -146,6 +149,44 @@ export default function Home() {
     }, 12000);
     return () => clearInterval(id);
   }, []);
+
+  // Pixel-grid walk — steps one cell at a time, bounces off edges
+  useEffect(() => {
+    if (expandPhase !== "idle") return;
+    const GRID = 16;
+    const STEP = 500; // ms per step
+
+    // Init position near bottom-right
+    setPixelPos({
+      x: Math.floor((window.innerWidth  * 0.72) / GRID) * GRID,
+      y: Math.floor((window.innerHeight * 0.78) / GRID) * GRID,
+    });
+
+    const step = () => {
+      setPixelPos(prev => {
+        let { dx, dy } = dirRef.current;
+        // ~20% chance to nudge direction
+        if (Math.random() < 0.20) {
+          if (Math.random() < 0.5) dx = -dx;
+          else                     dy = -dy;
+        }
+        let x = prev.x + dx * GRID;
+        let y = prev.y + dy * GRID;
+        // Bounce off viewport edges (leave margin for element size ~55×40)
+        const maxX = Math.floor((window.innerWidth  - 56) / GRID) * GRID;
+        const maxY = Math.floor((window.innerHeight - 42) / GRID) * GRID;
+        if (x < 0)    { x = 0;    dx =  1; }
+        if (y < 0)    { y = 0;    dy =  1; }
+        if (x > maxX) { x = maxX; dx = -1; }
+        if (y > maxY) { y = maxY; dy = -1; }
+        dirRef.current = { dx, dy };
+        return { x, y };
+      });
+      jumpTimerRef.current = setTimeout(step, STEP);
+    };
+    jumpTimerRef.current = setTimeout(step, STEP);
+    return () => clearTimeout(jumpTimerRef.current);
+  }, [expandPhase]);
 
   // Expand phase 1→2: one double-rAF so the start circle renders before transition kicks in
   useEffect(() => {
@@ -386,13 +427,13 @@ export default function Home() {
         </section>
       </div>
 
-      {/* ── Dead pixel easter egg — fixed, click to expand → /game ── */}
+      {/* ── Dead pixel easter egg — pixel-grid walk, click to expand → /game ── */}
       <div
         onClick={handlePixelClick}
         style={{
           position: "fixed",
-          bottom: 22,
-          right: 22,
+          left: pixelPos.x,
+          top:  pixelPos.y,
           zIndex: 50,
           display: "flex",
           alignItems: "flex-end",
@@ -400,6 +441,7 @@ export default function Home() {
           opacity: expandPhase !== "idle" ? 0 : 0.45,
           cursor: "crosshair",
           transition: "opacity 0.3s",
+          imageRendering: "pixelated",
         }}
         onMouseEnter={e => { if (expandPhase === "idle") (e.currentTarget as HTMLElement).style.opacity = "0.9"; }}
         onMouseLeave={e => { if (expandPhase === "idle") (e.currentTarget as HTMLElement).style.opacity = "0.45"; }}
