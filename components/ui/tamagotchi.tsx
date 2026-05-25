@@ -332,158 +332,152 @@ function drawRandomChannel(ctx: CanvasRenderingContext2D, idx: number, frame: nu
   }
 }
 
-// ── Falling sand (channel 2) ─────────────────────────────────
-const SAND_PX = 4, SAND_X0 = 24, SAND_Y0 = 18, SAND_CW = 36, SAND_CH = 30;
-const MAT_EMPTY=0, MAT_SAND=1, MAT_WATER=2, MAT_FIRE=3, MAT_WOOD=4, MAT_STONE=5, MAT_SMOKE=6, MAT_ACID=7;
-const SAND_COLORS: Record<number, string[]> = {
-  1:["#c8a050","#b89040","#d8b060"],
-  2:["#1a50b0","#2060c0","#183898"],
-  3:["#e03008","#f04818","#c02000","#ff5020"],
-  4:["#5a2a0e","#6a3a1e","#4a1a04"],
-  5:["#404050","#505060","#383848"],
-  6:["#252528","#2a2a2e","#303035"],
-  7:["#30ff00","#20e000","#48ff10"],
-};
+// ── Platformer escape (channel 2) ────────────────────────────
+const SAND_PX = 4, SAND_X0 = 24, SAND_Y0 = 18, SAND_CW = 36, SAND_CH = 30; // kept for signal catcher
+const PF_X=24, PF_Y=18, PF_W=144, PF_H=120;
+const PF_GRAVITY=0.35, PF_SPD=1.8, PF_JUMP_VEL=-5.8, PF_BOUNCE=-8.5;
+const PF_PW=8, PF_PH=8;
 
-function updateSandGrid(g: Uint8Array, W: number, H: number, burnPts: { current: number }) {
-  // Per-frame "already moved" flag prevents double-processing (fast-fall + water spreading across screen)
-  const updated = new Uint8Array(W * H);
+interface PfLevel {
+  platforms: {x:number;y:number;w:number}[];
+  mushrooms: {x:number;y:number}[];
+  goalX:number; goalY:number;
+  eyeSpeed:number; eyeX:number; eyeY:number;
+  reward:number;
+}
 
-  // Sand + water + acid: bottom-to-top so falling particles cascade naturally
-  for (let y = H-1; y >= 0; y--) {
-    const flip = Math.random() > 0.5;
-    for (let xi = 0; xi < W; xi++) {
-      const x = flip ? xi : W-1-xi;
-      const i = y*W+x;
-      if (updated[i]) continue;
-      const m = g[i];
-      if (!m) continue;
+const PF_LEVELS: PfLevel[] = [
+  { reward:10, eyeSpeed:0.45, eyeX:110, eyeY:100, goalX:72, goalY:14,
+    platforms:[{x:0,y:112,w:144},{x:22,y:88,w:40},{x:85,y:70,w:38},{x:42,y:52,w:52}],
+    mushrooms:[] },
+  { reward:20, eyeSpeed:0.7, eyeX:72, eyeY:104, goalX:72, goalY:12,
+    platforms:[{x:0,y:112,w:58},{x:86,y:112,w:58},{x:58,y:92,w:28},{x:8,y:74,w:35},{x:100,y:74,w:36},{x:45,y:54,w:48}],
+    mushrooms:[{x:72,y:87}] },
+  { reward:30, eyeSpeed:1.05, eyeX:20, eyeY:106, goalX:122, goalY:10,
+    platforms:[{x:0,y:112,w:38},{x:50,y:112,w:38},{x:100,y:112,w:44},{x:18,y:94,w:28},
+      {x:72,y:88,w:32},{x:118,y:76,w:26},{x:8,y:62,w:30},{x:55,y:56,w:36},{x:105,y:46,w:38},{x:30,y:36,w:24}],
+    mushrooms:[{x:95,y:57},{x:52,y:41}] },
+  { reward:50, eyeSpeed:1.45, eyeX:72, eyeY:108, goalX:14, goalY:8,
+    platforms:[{x:0,y:112,w:28},{x:36,y:112,w:22},{x:68,y:112,w:22},{x:100,y:112,w:22},{x:130,y:112,w:14},
+      {x:118,y:96,w:20},{x:88,y:82,w:22},{x:60,y:70,w:20},{x:30,y:60,w:22},{x:6,y:48,w:22},
+      {x:40,y:38,w:20},{x:72,y:28,w:20},{x:100,y:18,w:20},{x:120,y:8,w:24},{x:0,y:8,w:20}],
+    mushrooms:[{x:44,y:27},{x:76,y:103},{x:106,y:7}] },
+];
 
-      if (m === MAT_SAND) {
-        if (y===H-1) continue;
-        const b=(y+1)*W+x;
-        if ((!g[b]||g[b]===MAT_WATER) && !updated[b]) {
-          updated[i]=1; updated[b]=1;
-          const tmp=g[b]; g[b]=MAT_SAND; g[i]=tmp; continue;
-        }
-        for (const dx of (flip ? [-1,1] : [1,-1])) {
-          if (x+dx<0||x+dx>=W) continue;
-          const nb=(y+1)*W+(x+dx);
-          if ((!g[nb]||g[nb]===MAT_WATER) && !updated[nb]) {
-            updated[i]=1; updated[nb]=1;
-            const tmp=g[nb]; g[nb]=MAT_SAND; g[i]=tmp; break;
-          }
-        }
+type PfResult = "ok" | "win" | "die";
 
-      } else if (m === MAT_WATER || m === MAT_ACID) {
-        // Fall straight down
-        if (y < H-1) {
-          const b=(y+1)*W+x;
-          if (!g[b] && !updated[b]) {
-            updated[i]=1; updated[b]=1; g[b]=m; g[i]=0; continue;
-          }
-          // Fall diagonally (try before horizontal spread)
-          let diag=false;
-          for (const dx of (flip ? [-1,1] : [1,-1])) {
-            if (x+dx<0||x+dx>=W) continue;
-            const nb=(y+1)*W+(x+dx);
-            if (!g[nb] && !updated[nb]) {
-              updated[i]=1; updated[nb]=1; g[nb]=m; g[i]=0; diag=true; break;
-            }
-          }
-          if (diag) continue;
-        }
-        // Horizontal spread (liquid behavior)
-        for (const dx of (flip ? [-1,1] : [1,-1])) {
-          if (x+dx<0||x+dx>=W) continue;
-          const ni=y*W+(x+dx);
-          if (!g[ni] && !updated[ni]) {
-            updated[i]=1; updated[ni]=1; g[ni]=m; g[i]=0; break;
-          }
-        }
-        // Acid corrodes adjacent sand, wood, stone
-        if (m === MAT_ACID) {
-          for (const [dx,dy] of [[0,1],[1,0],[-1,0],[0,-1]] as [number,number][]) {
-            const nx=x+dx,ny=y+dy;
-            if (nx<0||nx>=W||ny<0||ny>=H) continue;
-            const t=g[ny*W+nx];
-            if ((t===MAT_SAND||t===MAT_WOOD||t===MAT_STONE) && Math.random()<0.03) {
-              g[ny*W+nx]=0; g[i]=0; break;
-            }
-          }
-        }
+function pfUpdate(
+  player: {x:number;y:number;vx:number;vy:number;onGround:boolean},
+  eye: {x:number;y:number;vx:number;vy:number},
+  keys: {left:boolean;right:boolean;jump:boolean},
+  jumpConsumed: {current:boolean},
+  level: PfLevel
+): PfResult {
+  player.vx = keys.left ? -PF_SPD : keys.right ? PF_SPD : 0;
+  if (keys.jump && player.onGround && !jumpConsumed.current) {
+    player.vy = PF_JUMP_VEL; player.onGround = false; jumpConsumed.current = true;
+  }
+  if (!keys.jump) jumpConsumed.current = false;
+  player.vy += PF_GRAVITY;
+  player.x += player.vx; player.y += player.vy;
+  if (player.x < 0) player.x = 0;
+  if (player.x + PF_PW > PF_W) player.x = PF_W - PF_PW;
+  player.onGround = false;
+  for (const p of level.platforms) {
+    if (player.x + PF_PW > p.x && player.x < p.x + p.w) {
+      const prevBottom = player.y + PF_PH - player.vy;
+      if (prevBottom <= p.y + 1 && player.y + PF_PH >= p.y) {
+        player.y = p.y - PF_PH; player.vy = 0; player.onGround = true;
       }
     }
   }
-
-  // Fire + smoke: top-to-bottom so upward movement doesn't double-process
-  for (let y = 0; y < H; y++) {
-    const flip = Math.random() > 0.5;
-    for (let xi = 0; xi < W; xi++) {
-      const x = flip ? xi : W-1-xi;
-      const i = y*W+x;
-      if (updated[i]) continue;
-      const m = g[i];
-      if (!m) continue;
-
-      if (m === MAT_FIRE) {
-        let ext=false;
-        for (const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]] as [number,number][]) {
-          const nx=x+dx,ny=y+dy;
-          if (nx<0||nx>=W||ny<0||ny>=H) continue;
-          const ni=ny*W+nx;
-          if (g[ni]===MAT_WATER||g[ni]===MAT_ACID) { g[i]=0; g[ni]=0; ext=true; break; }
-          if (g[ni]===MAT_WOOD && Math.random()<0.04) { g[ni]=MAT_FIRE; burnPts.current++; }
-        }
-        if (ext) continue;
-        if (y>0 && Math.random()<0.25) {
-          const ai=(y-1)*W+x;
-          if (!g[ai] && !updated[ai]) {
-            updated[i]=1; updated[ai]=1; g[ai]=MAT_FIRE; g[i]=MAT_SMOKE; continue;
-          }
-        }
-        if (Math.random()<0.02) g[i]=MAT_SMOKE;
-
-      } else if (m === MAT_SMOKE) {
-        if (Math.random()<0.025) { g[i]=0; continue; }
-        if (y>0 && Math.random()<0.35) {
-          const ai=(y-1)*W+x;
-          if (!g[ai] && !updated[ai]) {
-            updated[i]=1; updated[ai]=1; g[ai]=MAT_SMOKE; g[i]=0; continue;
-          }
-          const dx=flip?-1:1;
-          if (x+dx>=0&&x+dx<W) {
-            const si=(y-1)*W+(x+dx);
-            if (!g[si] && !updated[si]) {
-              updated[i]=1; updated[si]=1; g[si]=MAT_SMOKE; g[i]=0;
-            }
-          }
-        }
-      }
+  for (const m of level.mushrooms) {
+    if (player.x+PF_PW>m.x && player.x<m.x+8 && player.y+PF_PH>=m.y && player.y+PF_PH<=m.y+10 && player.vy>0) {
+      player.vy = PF_BOUNCE; player.y = m.y - PF_PH; player.onGround = false;
     }
   }
+  if (player.y > PF_H + 20) return "die";
+  if (Math.abs((player.x+PF_PW/2) - (level.goalX+4)) < 12 && Math.abs((player.y+PF_PH/2) - (level.goalY+4)) < 12) return "win";
+  eye.x += eye.vx;
+  if (eye.x < 0 || eye.x > PF_W-10) { eye.vx *= -1; eye.x = Math.max(0, Math.min(PF_W-10, eye.x)); }
+  const eyeTargetY = player.y + Math.sin(Date.now()*0.0008)*18;
+  eye.vy += (eyeTargetY - eye.y) * 0.018; eye.vy *= 0.88;
+  eye.y += eye.vy;
+  if (eye.y < 0) { eye.y=0; eye.vy=Math.abs(eye.vy)*0.5; }
+  if (eye.y > PF_H-10) { eye.y=PF_H-10; eye.vy=-Math.abs(eye.vy)*0.5; }
+  const ex=eye.x+5, ey=eye.y+4, px2=player.x+PF_PW/2, py2=player.y+PF_PH/2;
+  if (Math.abs(ex-px2)<8 && Math.abs(ey-py2)<8) return "die";
+  return "ok";
 }
 
-function paintSandGrid(g: Uint8Array, W: number, H: number, cx: number, cy: number, mat: number) {
-  const gx=Math.floor((cx-SAND_X0)/SAND_PX), gy=Math.floor((cy-SAND_Y0)/SAND_PX);
-  for (let dy=-1;dy<=1;dy++) for (let dx=-1;dx<=1;dx++) {
-    const nx=gx+dx,ny=gy+dy;
-    if (nx<0||nx>=W||ny<0||ny>=H) continue;
-    if (mat===MAT_EMPTY) g[ny*W+nx]=0;
-    else if (mat===MAT_WOOD||mat===MAT_STONE) g[ny*W+nx]=mat;
-    else if (!g[ny*W+nx]) g[ny*W+nx]=mat;
+function pfDraw(
+  ctx: CanvasRenderingContext2D,
+  player: {x:number;y:number},
+  eye: {x:number;y:number;vx:number},
+  level: PfLevel,
+  phase: "playing"|"dead"|"win",
+  levelIdx: number,
+  f: number
+) {
+  const ox=PF_X, oy=PF_Y;
+  ctx.fillStyle="#020508"; ctx.fillRect(ox,oy,PF_W,PF_H);
+  ctx.strokeStyle="#040a10"; ctx.lineWidth=1;
+  for (let gx=0;gx<=PF_W;gx+=16){ctx.beginPath();ctx.moveTo(ox+gx,oy);ctx.lineTo(ox+gx,oy+PF_H);ctx.stroke();}
+  for (let gy=0;gy<=PF_H;gy+=16){ctx.beginPath();ctx.moveTo(ox,oy+gy);ctx.lineTo(ox+PF_W,oy+gy);ctx.stroke();}
+  for (const p of level.platforms) {
+    ctx.fillStyle="#0e2030"; ctx.fillRect(ox+p.x,oy+p.y,p.w,5);
+    ctx.fillStyle="#1a3850"; ctx.fillRect(ox+p.x,oy+p.y,p.w,1);
   }
+  for (const m of level.mushrooms) {
+    const mp=0.7+Math.sin(f*0.1)*0.3;
+    ctx.globalAlpha=mp;
+    ctx.fillStyle="#7a0010"; ctx.fillRect(ox+m.x,oy+m.y,8,6);
+    ctx.fillStyle="#c82030"; ctx.fillRect(ox+m.x+1,oy+m.y,6,3);
+    ctx.fillStyle="#ff6070"; ctx.fillRect(ox+m.x+2,oy+m.y+1,2,2); ctx.fillRect(ox+m.x+5,oy+m.y,1,1);
+    ctx.fillStyle="#3a1010"; ctx.fillRect(ox+m.x+2,oy+m.y+5,4,3);
+    ctx.globalAlpha=1;
+  }
+  const gp=0.55+Math.sin(f*0.12)*0.45;
+  ctx.globalAlpha=gp*0.4; ctx.fillStyle="#1a6070";
+  ctx.fillRect(ox+level.goalX-6,oy+level.goalY-6,20,20);
+  ctx.globalAlpha=gp; ctx.fillStyle="#2a9aaa";
+  ctx.fillRect(ox+level.goalX-2,oy+level.goalY-2,12,12);
+  ctx.fillStyle="#60d8e8"; ctx.fillRect(ox+level.goalX+1,oy+level.goalY+1,6,6);
+  ctx.fillStyle="#c0f4fc"; ctx.fillRect(ox+level.goalX+3,oy+level.goalY+3,2,2);
+  ctx.globalAlpha=1;
+  const ex=Math.round(eye.x), ey2=Math.round(eye.y);
+  ctx.globalAlpha=0.2+Math.sin(f*0.09)*0.1;
+  ctx.fillStyle="#b01020"; ctx.fillRect(ox+ex-5,oy+ey2-5,20,18);
+  ctx.globalAlpha=1;
+  ctx.fillStyle="#5a0010"; ctx.fillRect(ox+ex,oy+ey2,10,8);
+  ctx.fillStyle="#b01828"; ctx.fillRect(ox+ex+2,oy+ey2+1,6,5);
+  const pd=eye.vx>0?1:0;
+  ctx.fillStyle="#040408"; ctx.fillRect(ox+ex+3+pd,oy+ey2+2,3,3);
+  ctx.fillStyle="#ff3050"; ctx.fillRect(ox+ex+3+pd,oy+ey2+2,1,1);
+  const pa=Math.round(player.x), pb=Math.round(player.y);
+  if (phase==="dead") { ctx.globalAlpha=0.5+Math.sin(f*0.3)*0.3; ctx.fillStyle="#ff2020"; }
+  else if (phase==="win") { ctx.globalAlpha=0.6+Math.sin(f*0.25)*0.4; ctx.fillStyle="#50e0c0"; }
+  else { ctx.globalAlpha=1; ctx.fillStyle="#5ab0e0"; }
+  ctx.fillRect(ox+pa,oy+pb,PF_PW,PF_PH);
+  ctx.globalAlpha=1;
+  ctx.fillStyle="#e8f4ff"; ctx.fillRect(ox+pa+2,oy+pb+2,3,2);
+  ctx.fillStyle="#000814"; ctx.fillRect(ox+pa+3,oy+pb+2,1,1);
+  if (phase==="dead") {
+    ctx.globalAlpha=0.88; ctx.fillStyle="#020406"; ctx.fillRect(ox+18,oy+42,108,32); ctx.globalAlpha=1;
+    ctx.fillStyle="#c02020"; ctx.font="7px monospace"; ctx.textAlign="center";
+    ctx.fillText("CAUGHT!",ox+72,oy+56);
+    ctx.fillStyle="#3a5870"; ctx.font="5px monospace"; ctx.fillText("TAP TO RETRY",ox+72,oy+68);
+  } else if (phase==="win") {
+    ctx.globalAlpha=0.88; ctx.fillStyle="#020406"; ctx.fillRect(ox+14,oy+42,116,32); ctx.globalAlpha=1;
+    ctx.fillStyle="#50d0b0"; ctx.font="7px monospace"; ctx.textAlign="center";
+    ctx.fillText(`+${PF_LEVELS[levelIdx].reward} SIGNAL`,ox+72,oy+56);
+    ctx.fillStyle="#3a8090"; ctx.font="5px monospace";
+    ctx.fillText(levelIdx<3?"TAP FOR NEXT":"ALL CLEAR",ox+72,oy+68);
+  }
+  ctx.globalAlpha=0.7; ctx.fillStyle="#0e2030"; ctx.font="5px monospace"; ctx.textAlign="left";
+  ctx.fillText(`LV${levelIdx+1}`,ox+2,oy+PF_H-2); ctx.globalAlpha=1;
 }
 
-function drawSandGrid(ctx: CanvasRenderingContext2D, g: Uint8Array, W: number, H: number, f: number) {
-  ctx.fillStyle=C.screen; ctx.fillRect(SAND_X0,SAND_Y0,W*SAND_PX,H*SAND_PX);
-  for (let y=0;y<H;y++) for (let x=0;x<W;x++) {
-    const m=g[y*W+x]; if (!m) continue;
-    const cols=SAND_COLORS[m];
-    ctx.fillStyle=cols[m===MAT_FIRE?(f+x+y)%cols.length:(x*7+y*11)%cols.length];
-    ctx.fillRect(SAND_X0+x*SAND_PX,SAND_Y0+y*SAND_PX,SAND_PX,SAND_PX);
-  }
-}
 
 // ── Signal catcher (channel 3) ────────────────────────────────
 interface CatchDot { x:number; y:number; vy:number; }
@@ -817,14 +811,20 @@ export function EyeTV() {
 
   // Multi-channel system
   const activeChRef   = useRef(1);
-  const sandGrid      = useRef(new Uint8Array(SAND_CW * SAND_CH));
-  const sandBrushRef  = useRef(MAT_SAND);
-  const sandDrawRef   = useRef<{cx:number;cy:number}|null>(null);
-  const sandBurnRef   = useRef(0);
   const catchDots     = useRef<CatchDot[]>([]);
   const catchPaddleX  = useRef(16.0);
   const catchScoreRef = useRef(0);
   const catchTargetX  = useRef<number|null>(null);
+
+  // Platformer state
+  const keysRef       = useRef({ left: false, right: false, jump: false });
+  const jumpConsumed  = useRef(false);
+  const platLevelRef  = useRef(0);
+  const platPhaseRef  = useRef<"playing"|"dead"|"win">("playing");
+  const platDeadTimer = useRef(0);
+  const platWinTimer  = useRef(0);
+  const playerPlatRef = useRef({ x: 20.0, y: 100.0, vx: 0.0, vy: 0.0, onGround: false });
+  const eyeEnemyRef   = useRef({ x: 110.0, y: 100.0, vx: 0.4, vy: 0.1 });
 
   const [phase, setPhase] = useState<"pick" | "play">("pick");
   const [hype, setHype] = useState(0);
@@ -832,7 +832,6 @@ export function EyeTV() {
   const [leaderboard, setLeaderboard] = useState<{ alias: string; clicks: number }[]>([]);
   const [signalMap, setSignalMap] = useState<Record<string, number>>({});
   const [activeCh, setActiveCh]   = useState(1);
-  const [sandBrush, setSandBrush] = useState(MAT_SAND);
 
   const fetchHype = useCallback(async () => {
     try {
@@ -875,6 +874,44 @@ export function EyeTV() {
       setMyScore(Number(d.total ?? 0));
     } catch {}
   }, []);
+
+  const initPlatLevel = useCallback((idx: number) => {
+    const lv = PF_LEVELS[idx];
+    platLevelRef.current = idx;
+    platPhaseRef.current = "playing";
+    platDeadTimer.current = 0;
+    platWinTimer.current = 0;
+    // Start player on first platform
+    const floor = lv.platforms.find(p => p.y >= 100) ?? lv.platforms[0];
+    playerPlatRef.current = { x: floor.x + 4, y: floor.y - PF_PH - 1, vx: 0, vy: 0, onGround: true };
+    eyeEnemyRef.current = { x: lv.eyeX, y: lv.eyeY, vx: lv.eyeSpeed, vy: 0.1 };
+    keysRef.current = { left: false, right: false, jump: false };
+    jumpConsumed.current = false;
+  }, []);
+
+  // Keyboard controls for platformer
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft"  || e.key === "a" || e.key === "A") keysRef.current.left  = true;
+      if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keysRef.current.right = true;
+      if (e.key === "ArrowUp" || e.key === "w" || e.key === "W" || e.key === " ") {
+        e.preventDefault(); keysRef.current.jump = true;
+      }
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft"  || e.key === "a" || e.key === "A") keysRef.current.left  = false;
+      if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keysRef.current.right = false;
+      if (e.key === "ArrowUp" || e.key === "w" || e.key === "W" || e.key === " ") keysRef.current.jump = false;
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
+  }, []);
+
+  // Init platformer when switching to CH.2
+  useEffect(() => {
+    if (activeCh === 2) initPlatLevel(platLevelRef.current);
+  }, [activeCh, initPlatLevel]);
 
   // Restore saved nick from localStorage
   useEffect(() => {
@@ -980,22 +1017,29 @@ export function EyeTV() {
       const ch = activeChRef.current;
 
       if (ch === 2) {
-        // ── Falling Sand ──────────────────────────────────
-        if (sandDrawRef.current) paintSandGrid(sandGrid.current, SAND_CW, SAND_CH, sandDrawRef.current.cx, sandDrawRef.current.cy, sandBrushRef.current);
-        updateSandGrid(sandGrid.current, SAND_CW, SAND_CH, sandBurnRef);
-        if (sandBurnRef.current >= 5) {
-          const pts = Math.floor(sandBurnRef.current / 5);
-          sandBurnRef.current -= pts * 5;
-          pendingRef.current += pts;
-          hypeRef.current += pts;
-          setHype(h => h + pts);
-          setMyScore(s => s + pts);
-          MILESTONES.forEach((m, mi) => { if (hypeRef.current >= m) passedRef.current.add(mi); });
+        // ── Platformer Escape ─────────────────────────────
+        const phase = platPhaseRef.current;
+        if (phase === "playing") {
+          const res = pfUpdate(playerPlatRef.current, eyeEnemyRef.current, keysRef.current, jumpConsumed, PF_LEVELS[platLevelRef.current]);
+          if (res === "die") { platPhaseRef.current = "dead"; platDeadTimer.current = 90; }
+          else if (res === "win") {
+            platPhaseRef.current = "win"; platWinTimer.current = 90;
+            const reward = PF_LEVELS[platLevelRef.current].reward;
+            pendingRef.current += reward; hypeRef.current += reward;
+            setHype(h => h + reward); setMyScore(s => s + reward);
+            MILESTONES.forEach((m, mi) => { if (hypeRef.current >= m) passedRef.current.add(mi); });
+          }
+        } else if (phase === "dead") {
+          platDeadTimer.current--;
+          if (platDeadTimer.current <= 0) initPlatLevel(platLevelRef.current);
+        } else if (phase === "win") {
+          platWinTimer.current--;
+          if (platWinTimer.current <= 0) {
+            const next = Math.min(platLevelRef.current + 1, PF_LEVELS.length - 1);
+            initPlatLevel(next);
+          }
         }
-        drawSandGrid(ctx, sandGrid.current, SAND_CW, SAND_CH, f);
-        // Sand label
-        ctx.fillStyle="#0e2030"; ctx.font="5px monospace"; ctx.textAlign="right";
-        ctx.fillText("CH.2 SAND",SAND_X0+SAND_CW*SAND_PX-2, SAND_Y0+SAND_CH*SAND_PX-2);
+        pfDraw(ctx, playerPlatRef.current, eyeEnemyRef.current, PF_LEVELS[platLevelRef.current], platPhaseRef.current, platLevelRef.current, f);
 
       } else if (ch === 3) {
         // ── Signal Catcher ────────────────────────────────
@@ -1155,11 +1199,13 @@ export function EyeTV() {
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     const ch = activeChRef.current;
     if (ch === 2) {
+      // Canvas thirds: left third = left, right third = right, center = jump
       const c = toCanvasCoords(e);
       if (c) {
-        sandDrawRef.current = c;
-        // paint immediately — don't wait for next RAF frame (single taps would otherwise be missed)
-        paintSandGrid(sandGrid.current, SAND_CW, SAND_CH, c.cx, c.cy, sandBrushRef.current);
+        const third = PF_W / 3;
+        if (c.cx - PF_X < third) { keysRef.current.left = true; keysRef.current.right = false; }
+        else if (c.cx - PF_X > PF_W - third) { keysRef.current.right = true; keysRef.current.left = false; }
+        else keysRef.current.jump = true;
       }
     } else if (ch === 3) {
       const c = toCanvasCoords(e);
@@ -1171,12 +1217,11 @@ export function EyeTV() {
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     const ch = activeChRef.current;
-    if (ch === 2 && sandDrawRef.current) { const c = toCanvasCoords(e); if (c) sandDrawRef.current = c; }
-    else if (ch === 3) { const c = toCanvasCoords(e); if (c) catchTargetX.current = (c.cx-SAND_X0)/SAND_PX-2; }
+    if (ch === 3) { const c = toCanvasCoords(e); if (c) catchTargetX.current = (c.cx-SAND_X0)/SAND_PX-2; }
   }, [toCanvasCoords]);
 
   const handlePointerUp = useCallback(() => {
-    sandDrawRef.current = null;
+    keysRef.current = { left: false, right: false, jump: false };
     catchTargetX.current = null;
   }, []);
 
@@ -1232,7 +1277,7 @@ export function EyeTV() {
       <div style={{ display:"flex", gap:6, width:W }}>
         {([
           {ch:1, label:"CH.1 EYE"},
-          {ch:2, label:"CH.2 SAND"},
+          {ch:2, label:"CH.2 RUN"},
           {ch:3, label:"CH.3 CATCH"},
         ] as {ch:number,label:string}[]).map(({ch,label})=>(
           <button key={ch} onPointerDown={()=>{setActiveCh(ch);activeChRef.current=ch;}} style={{
@@ -1246,38 +1291,33 @@ export function EyeTV() {
         ))}
       </div>
 
-      {/* Material palette — only in sandbox channel */}
+      {/* Virtual controls — only in platformer channel */}
       {activeCh===2 && (
-        <div style={{ display:"flex", flexDirection:"column", gap:5, alignItems:"center", width:W }}>
-          <div style={{ display:"flex", gap:5, flexWrap:"wrap", justifyContent:"center" }}>
-            {([
-              {mat:MAT_SAND,  label:"SAND",  color:"#c8a050"},
-              {mat:MAT_WATER, label:"WATER", color:"#2060c0"},
-              {mat:MAT_FIRE,  label:"FIRE",  color:"#e04010"},
-              {mat:MAT_WOOD,  label:"WOOD",  color:"#6a3a1a"},
-              {mat:MAT_STONE, label:"STONE", color:"#505060"},
-              {mat:MAT_ACID,  label:"ACID",  color:"#30ff00"},
-              {mat:MAT_EMPTY, label:"ERASE", color:"#303030"},
-            ] as {mat:number,label:string,color:string}[]).map(({mat,label,color})=>(
-              <button key={mat} onPointerDown={()=>{setSandBrush(mat);sandBrushRef.current=mat;}} style={{
-                fontFamily:"'Press Start 2P', monospace", fontSize:6,
-                background:sandBrush===mat?color:"#050a0f",
-                border:`1px solid ${sandBrush===mat?color:"#0e1c28"}`,
-                color:sandBrush===mat?"#fff":color,
-                padding:"5px 8px", cursor:"pointer", touchAction:"none",
-                boxShadow:sandBrush===mat?`0 0 8px ${color}70`:"none",
-                minWidth:44,
-              }}>{label}</button>
-            ))}
-          </div>
+        <div style={{ display:"flex", gap:6, width:W, justifyContent:"space-between", alignItems:"center" }}>
           <button
-            onPointerDown={()=>{ sandGrid.current.fill(0); }}
-            style={{
-              fontFamily:"'Press Start 2P', monospace", fontSize:6,
-              background:"#050a0f", border:"1px solid #1a2030",
-              color:"#1e3a4a", padding:"5px 12px", cursor:"pointer", touchAction:"none",
-            }}
-          >CLEAR</button>
+            onPointerDown={()=>{keysRef.current.left=true;}} onPointerUp={()=>{keysRef.current.left=false;}}
+            onPointerLeave={()=>{keysRef.current.left=false;}}
+            style={{ flex:1, fontFamily:"'Press Start 2P', monospace", fontSize:14,
+              background:"#050a0f", border:"1px solid #0e2030", color:"#2a5878",
+              padding:"10px 0", cursor:"pointer", touchAction:"none", userSelect:"none",
+              boxShadow:"0 0 8px rgba(0,40,80,0.4)",
+            }}>◀</button>
+          <button
+            onPointerDown={()=>{keysRef.current.jump=true;}} onPointerUp={()=>{keysRef.current.jump=false;}}
+            onPointerLeave={()=>{keysRef.current.jump=false;}}
+            style={{ flex:1.4, fontFamily:"'Press Start 2P', monospace", fontSize:10,
+              background:"#060d18", border:"1px solid #1a4060", color:"#3a7898",
+              padding:"10px 0", cursor:"pointer", touchAction:"none", userSelect:"none",
+              boxShadow:"0 0 12px rgba(0,60,120,0.5)",
+            }}>JUMP</button>
+          <button
+            onPointerDown={()=>{keysRef.current.right=true;}} onPointerUp={()=>{keysRef.current.right=false;}}
+            onPointerLeave={()=>{keysRef.current.right=false;}}
+            style={{ flex:1, fontFamily:"'Press Start 2P', monospace", fontSize:14,
+              background:"#050a0f", border:"1px solid #0e2030", color:"#2a5878",
+              padding:"10px 0", cursor:"pointer", touchAction:"none", userSelect:"none",
+              boxShadow:"0 0 8px rgba(0,40,80,0.4)",
+            }}>▶</button>
         </div>
       )}
 
