@@ -496,6 +496,13 @@ export function EyeTV() {
   const pendingRef = useRef(0);
   const nickRef    = useRef("ANON");
 
+  // Phosphor eye effects
+  const lookRef       = useRef<LookDir>("c");
+  const trailRef      = useRef<{ lx: number; ly: number }[]>([]);
+  const clickFlashRef = useRef(0);
+  const floatsRef     = useRef<{ y: number; life: number; max: number }[]>([]);
+  const tapCountRef   = useRef(0);
+
   const [phase, setPhase] = useState<"pick" | "play">("pick");
   const [hype, setHype] = useState(0);
   const [leaderboard, setLeaderboard] = useState<{ alias: string; clicks: number }[]>([]);
@@ -605,6 +612,7 @@ export function EyeTV() {
         lookStep.current = 0;
         lookCount.current = LOOK_SEQ[0][1];
       }
+      lookRef.current = look;
 
       if (st === "active") activeFrame.current--;
       if (st === "glitch" && f % 10 === 0) noiseRef.current = makeNoise();
@@ -617,15 +625,11 @@ export function EyeTV() {
 
       // Priority: milestone channel > random channel > normal states
       if (channelTimerRef.current > 0) {
-        const chIdx    = channelIdxRef.current;
-        const maxT     = CH_DURATION[chIdx] - CH_INTRO;
+        const chIdx     = channelIdxRef.current;
+        const maxT      = CH_DURATION[chIdx] - CH_INTRO;
         const remaining = channelTimerRef.current;
-        if (remaining > maxT) {
-          drawStaticBurst(ctx);
-        } else {
-          const el = maxT - remaining;
-          drawChannelCard(ctx, chIdx, el, maxT);
-        }
+        if (remaining > maxT) drawStaticBurst(ctx);
+        else drawChannelCard(ctx, chIdx, maxT - remaining, maxT);
         channelTimerRef.current--;
       } else if (randChTimerRef.current > 0) {
         drawRandomChannel(ctx, randChIdxRef.current, f);
@@ -645,7 +649,65 @@ export function EyeTV() {
         zzzsRef.current = zzzsRef.current.filter(z => z.life > 0);
         ctx.globalAlpha = 1;
       } else {
+        // ── Phosphor iris trail ─────────────────────────
+        trailRef.current.forEach((t, i) => {
+          const a = Math.max(0, 1 - i / trailRef.current.length) * 0.22;
+          ctx.globalAlpha = a;
+          // iris glow blob at past position
+          ctx.fillStyle = "#4a7898";
+          ctx.fillRect((14 + t.lx) * PX, (11 + t.ly) * PX, 5 * PX, 5 * PX);
+          ctx.fillStyle = "#6a98c0";
+          ctx.fillRect((14 + t.lx) * PX, (11 + t.ly) * PX, 5 * PX, PX);
+        });
+        ctx.globalAlpha = 1;
+
+        // ── Main eye ────────────────────────────────────
         drawEye(ctx, !eyeOpen, look, st === "active");
+
+        // ── Static → Signal overlay (clears with global hype) ──
+        if (channelTimerRef.current <= 0 && randChTimerRef.current <= 0) {
+          const baseDensity = Math.max(0, 1 - hypeRef.current / HYPE_GOAL);
+          const flash = Math.min(1, clickFlashRef.current / 18);
+          const density = baseDensity * (1 - flash * 0.78) * 0.80;
+          if (density > 0.015) {
+            for (let y = 3; y < 23; y++)
+              for (let x = 4; x < 28; x++)
+                if (Math.random() < density) {
+                  const v = Math.random();
+                  px(ctx, x, y, v > 0.5 ? "#4a5a64" : "#010306");
+                }
+          }
+          // Click flash: brief blue-white glow on screen
+          if (clickFlashRef.current > 0) {
+            const glow = (clickFlashRef.current / 18) * 0.12;
+            ctx.globalAlpha = glow;
+            ctx.fillStyle = "#8ab8d8";
+            ctx.fillRect(4 * PX, 3 * PX, 24 * PX, 20 * PX);
+            ctx.globalAlpha = 1;
+          }
+        }
+        if (clickFlashRef.current > 0) clickFlashRef.current--;
+
+        // ── Floating +1 texts (drawn on canvas) ─────────
+        ctx.textAlign = "center";
+        floatsRef.current.forEach(fl => {
+          ctx.globalAlpha = (fl.life / fl.max) * 0.95;
+          ctx.fillStyle = "#6ab8d0";
+          ctx.font = "bold 9px monospace";
+          ctx.fillText("+1", 96, fl.y);
+          fl.y -= 0.7;
+          fl.life--;
+        });
+        ctx.globalAlpha = 1;
+        floatsRef.current = floatsRef.current.filter(fl => fl.life > 0);
+
+        // ── TAP hint — first visit ───────────────────────
+        if (tapCountRef.current === 0 && Math.floor(f / 28) % 2 === 0) {
+          ctx.fillStyle = "#2a5a70";
+          ctx.font = "6px monospace";
+          ctx.textAlign = "center";
+          ctx.fillText("TAP", 96, 128);
+        }
       }
 
       drawGrain(ctx, W, H);
@@ -685,11 +747,15 @@ export function EyeTV() {
     }
 
     setHype(h => h + 1);
-    setTapCount(c => c + 1);
     pendingRef.current++;
-  }, []);
 
-  const [tapCount, setTapCount] = useState(0);
+    clickFlashRef.current = 18;
+    floatsRef.current.push({ y: 72, life: 36, max: 36 });
+    const [lx, ly] = LOOK_OFFSET[lookRef.current];
+    trailRef.current.unshift({ lx, ly });
+    if (trailRef.current.length > 8) trailRef.current.pop();
+    tapCountRef.current++;
+  }, []);
 
   const pct = Math.min((hype / HYPE_GOAL) * 100, 100);
   const RANK_COLORS = ["#5a9ab8", "#3a7090", "#2a5068", "#1e3a4a"];
@@ -730,41 +796,6 @@ export function EyeTV() {
           style={{ cursor: "crosshair", imageRendering: "pixelated", display: "block", touchAction: "none", width: "100%", height: "100%" }}
         />
 
-        {/* Tap flash — re-triggers each tap via key */}
-        {tapCount > 0 && (
-          <div key={tapCount} style={{
-            position: "absolute", inset: 0, pointerEvents: "none",
-            animation: "tap-flash 0.28s ease-out forwards",
-            border: "1px solid rgba(90,154,200,0.6)",
-          }} />
-        )}
-
-        {/* Floating +1 — rises and fades */}
-        {tapCount > 0 && (
-          <div key={`f${tapCount}`} style={{
-            position: "absolute", top: "28%", left: "50%",
-            pointerEvents: "none",
-            fontFamily: "'Press Start 2P', monospace",
-            fontSize: 11, color: "#5a9ab8",
-            textShadow: "0 0 10px rgba(90,154,184,0.7)",
-            animation: "float-up 0.55s ease-out forwards",
-          }}>+1</div>
-        )}
-
-        {/* First-visit hint — disappears after first tap */}
-        {tapCount === 0 && (
-          <div style={{
-            position: "absolute", inset: 0, pointerEvents: "none",
-            display: "flex", alignItems: "flex-end", justifyContent: "center",
-            paddingBottom: 10,
-          }}>
-            <span style={{
-              fontFamily: "'Press Start 2P', monospace",
-              fontSize: 7, color: "#3a7090", letterSpacing: "0.25em",
-              animation: "hint-pulse 1.6s ease-in-out infinite",
-            }}>TAP</span>
-          </div>
-        )}
       </div>
 
       <div style={{ width: W, display: "flex", flexDirection: "column", gap: 8 }}>
