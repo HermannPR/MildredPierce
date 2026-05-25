@@ -332,6 +332,82 @@ function drawRandomChannel(ctx: CanvasRenderingContext2D, idx: number, frame: nu
   }
 }
 
+// ── Name picker ──────────────────────────────────────────────
+
+const CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+function NamePicker({ onConfirm }: { onConfirm: (nick: string) => void }) {
+  const [chars, setChars] = useState([0, 0, 0, 0]);
+
+  const cycle = (slot: number, dir: 1 | -1) => {
+    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(5);
+    setChars(prev => {
+      const next = [...prev];
+      next[slot] = (next[slot] + dir + CHARSET.length) % CHARSET.length;
+      return next;
+    });
+  };
+
+  const confirm = () => onConfirm(chars.map(i => CHARSET[i]).join(""));
+
+  const btnStyle: React.CSSProperties = {
+    background: "none", border: "none", cursor: "pointer",
+    fontFamily: "'Press Start 2P', monospace",
+    fontSize: 9, color: "#2a6080", padding: "4px 8px", lineHeight: 1,
+    touchAction: "none",
+  };
+
+  return (
+    <div style={{
+      width: 192, height: 192,
+      background: "#050708",
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      gap: 14,
+      border: "1px solid #0e1c28",
+      boxShadow: "0 0 30px rgba(0,60,140,0.35)",
+    }}>
+      <p style={{
+        fontFamily: "'Press Start 2P', monospace",
+        fontSize: 7, color: "#3a6888", letterSpacing: "0.2em",
+        margin: 0, textShadow: "0 0 10px rgba(42,112,144,0.5)",
+      }}>CALL SIGN</p>
+
+      <div style={{ display: "flex", gap: 8 }}>
+        {[0,1,2,3].map(slot => (
+          <div key={slot} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+            <button onPointerDown={() => cycle(slot, -1)} style={btnStyle}>▲</button>
+            <div style={{
+              width: 34, height: 38, background: "#080d14",
+              border: "1px solid #1a3a50",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontFamily: "'Press Start 2P', monospace", fontSize: 16,
+              color: "#5a9ab8", textShadow: "0 0 8px rgba(90,154,184,0.6)",
+            }}>
+              {CHARSET[chars[slot]]}
+            </div>
+            <button onPointerDown={() => cycle(slot, 1)} style={btnStyle}>▼</button>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onPointerDown={confirm}
+        style={{
+          marginTop: 2, background: "#0a1820",
+          border: "1px solid #1a4060", cursor: "pointer",
+          fontFamily: "'Press Start 2P', monospace",
+          fontSize: 8, color: "#3a8090", letterSpacing: "0.2em",
+          padding: "8px 18px", textShadow: "0 0 8px rgba(42,128,144,0.5)",
+          boxShadow: "0 0 12px rgba(0,60,140,0.25)", touchAction: "none",
+        }}
+      >
+        START ▶
+      </button>
+    </div>
+  );
+}
+
 // ── Component ────────────────────────────────────────────────
 
 export function EyeTV() {
@@ -359,7 +435,9 @@ export function EyeTV() {
 
   // Click batching — no cooldown, flush to API every 250ms
   const pendingRef = useRef(0);
+  const nickRef    = useRef("ANON");
 
+  const [phase, setPhase] = useState<"pick" | "play">("pick");
   const [hype, setHype] = useState(0);
   const [leaderboard, setLeaderboard] = useState<{ alias: string; clicks: number }[]>([]);
 
@@ -387,6 +465,15 @@ export function EyeTV() {
     } catch {}
   }, []);
 
+  // Restore saved nick from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("eyetv_nick");
+    if (saved && /^[A-Z]{4}$/.test(saved)) {
+      nickRef.current = saved;
+      setPhase("play");
+    }
+  }, []);
+
   // Initial fetch
   useEffect(() => {
     fetchHype();
@@ -406,7 +493,7 @@ export function EyeTV() {
         const r = await fetch("/api/hype", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ count }),
+          body: JSON.stringify({ count, nick: nickRef.current }),
         });
         const d = await r.json();
         if (d.total != null) {
@@ -549,6 +636,22 @@ export function EyeTV() {
   // Milestone labels for progress bar markers
   const milestoneLabels = ["5K", "10K", "15K", "20K"];
 
+  const handleConfirm = useCallback((nick: string) => {
+    nickRef.current = nick;
+    localStorage.setItem("eyetv_nick", nick);
+    setPhase("play");
+    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([10, 30, 10]);
+  }, []);
+
+  if (phase === "pick") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, userSelect: "none" }}>
+        <NamePicker onConfirm={handleConfirm} />
+        <div style={{ width: 220 }} /> {/* spacer to match play layout height */}
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, userSelect: "none" }}>
       <canvas
@@ -607,6 +710,27 @@ export function EyeTV() {
         }}>
           {hype.toLocaleString()} <span style={{ color: "#1e3a4a", fontSize: 7 }}>/ {HYPE_GOAL.toLocaleString()}</span>
         </p>
+
+        {/* Active nick + change */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{
+            fontFamily: "'Press Start 2P', monospace", fontSize: 7,
+            color: "#2a6888", letterSpacing: "0.12em",
+            textShadow: "0 0 8px rgba(42,104,136,0.4)",
+          }}>
+            ▶ {nickRef.current}
+          </span>
+          <button
+            onPointerDown={() => { localStorage.removeItem("eyetv_nick"); setPhase("pick"); }}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              fontFamily: "'Press Start 2P', monospace", fontSize: 5,
+              color: "#1a3040", letterSpacing: "0.1em", touchAction: "none",
+            }}
+          >
+            change
+          </button>
+        </div>
 
         {/* Leaderboard */}
         {leaderboard.length > 0 && (

@@ -6,9 +6,10 @@ export async function GET() {
     const { rows } = await sql`
       SELECT nick, SUM(score) AS total
       FROM tama_scores
+      WHERE nick NOT IN ('HYPE', 'ANON')
       GROUP BY nick
       ORDER BY total DESC
-      LIMIT 4
+      LIMIT 8
     `;
     const users = rows.map((r, i) => ({
       rank: i + 1,

@@ -26,9 +26,10 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     await ensureTable();
-    const body = await req.json().catch(() => ({}));
+    const body  = await req.json().catch(() => ({}));
     const count = Math.min(Math.max(1, Number(body.count ?? 1)), 100);
-    await sql`INSERT INTO tama_scores (nick, score) VALUES ('HYPE', ${count})`;
+    const nick  = String(body.nick ?? "ANON").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4) || "ANON";
+    await sql`INSERT INTO tama_scores (nick, score) VALUES (${nick}, ${count})`;
     const { rows } = await sql`SELECT COALESCE(SUM(score), 0) AS total FROM tama_scores`;
     return NextResponse.json({ ok: true, total: Number(rows[0].total), goal: HYPE_GOAL });
   } catch {
