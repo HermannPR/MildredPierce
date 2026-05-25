@@ -37,11 +37,12 @@ export function EyeTVPage() {
         }
         .eyetv-canvas-wrap canvas {
           animation: crt-flicker 10s infinite;
+          background: transparent;
           filter:
-            drop-shadow(0 0 10px rgba(30, 100, 180, 0.70))
-            drop-shadow(0 0 30px rgba(10,  60, 120, 0.40))
-            drop-shadow(0 0 60px rgba(0,   30,  80, 0.20))
-            brightness(0.96) contrast(1.10);
+            drop-shadow(0 0 12px rgba(40, 120, 220, 0.90))
+            drop-shadow(0 0 32px rgba(20,  80, 160, 0.60))
+            drop-shadow(0 0 70px rgba(0,   40, 100, 0.30))
+            brightness(1.05) contrast(1.10);
         }
         .eyetv-back:hover { color: #5a9ab8 !important; }
       `}</style>

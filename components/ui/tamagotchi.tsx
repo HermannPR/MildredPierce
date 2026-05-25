@@ -12,9 +12,9 @@ const RAND_CH_PROB  = 0.15;
 
 const C = {
   bg:       "#050708",
-  bezel:    "#0b0b10",
-  bezelHi:  "#111118",
-  bezelSh:  "#030306",
+  bezel:    "#18202e",
+  bezelHi:  "#252e40",
+  bezelSh:  "#090c14",
   screen:   "#040810",
   scanLine: "#020408",
   eyeWhite: "#6a8ea8",
@@ -25,9 +25,9 @@ const C = {
   noise:    "#0a1828",
   noiseHi:  "#090912",
   zzz:      "#081018",
-  stand:    "#07070e",
-  standBase:"#090912",
-  led:      "#003820",
+  stand:    "#0e1420",
+  standBase:"#0c1018",
+  led:      "#00a030",
 } as const;
 
 type State   = "idle" | "active" | "glitch" | "sleep";
@@ -114,11 +114,11 @@ function drawSleepEye(ctx: CanvasRenderingContext2D) {
   ctx.globalAlpha = 1;
 }
 
-function drawGrain(ctx: CanvasRenderingContext2D, W: number, H: number) {
+function drawGrain(ctx: CanvasRenderingContext2D) {
   ctx.globalAlpha = 0.028;
   for (let i = 0; i < 16; i++) {
     ctx.fillStyle = Math.random() > 0.5 ? "#ffffff" : "#000000";
-    ctx.fillRect(Math.random() * W, Math.random() * H, PX, PX);
+    ctx.fillRect(4*PX + Math.random()*24*PX, 3*PX + Math.random()*20*PX, PX, PX);
   }
   ctx.globalAlpha = 1;
 }
@@ -709,12 +709,12 @@ function NamePicker({ onConfirm }: { onConfirm: (nick: string) => void }) {
   return (
     <div style={{
       width: "clamp(280px, 90vw, 340px)", minHeight: "clamp(260px, 72vw, 320px)",
-      background: "#050708",
+      background: "#0a0f1a",
       display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center",
       gap: 18,
-      border: "1px solid #0e1c28",
-      boxShadow: "0 0 30px rgba(0,60,140,0.35)",
+      border: "1px solid #1a3050",
+      boxShadow: "0 0 40px rgba(20,80,180,0.5), inset 0 0 30px rgba(0,20,60,0.4)",
     }}>
       <p style={{
         fontFamily: "'Press Start 2P', monospace",
@@ -1008,8 +1008,7 @@ export function EyeTV() {
       if (st === "sleep"  && f % 100 === 0)
         zzzsRef.current.push({ x: 20 + Math.random() * 3, y: 7, life: 70, maxLife: 70 });
 
-      ctx.fillStyle = C.bg;
-      ctx.fillRect(0, 0, W, H);
+      ctx.clearRect(0, 0, W, H);
       drawMonitor(ctx);
 
       const ch = activeChRef.current;
@@ -1140,7 +1139,7 @@ export function EyeTV() {
       }
       } // end ch===1
 
-      drawGrain(ctx, W, H);
+      drawGrain(ctx);
       rafRef.current = requestAnimationFrame(loop);
     }
 
