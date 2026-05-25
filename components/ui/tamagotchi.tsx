@@ -3,10 +3,12 @@ import { useEffect, useRef, useState, useCallback } from "react";
 
 const PX          = 6;
 const HYPE_GOAL   = 20_000;
-const COOLDOWN_MS = 800;
 const MILESTONES  = [5_000, 10_000, 15_000, 20_000];
-const RAND_CH_COUNT = 7;   // number of random channel types
-const RAND_CH_PROB  = 0.18; // chance per click
+// Total frames per milestone channel (including intro static burst)
+const CH_DURATION = [240, 260, 280, 320] as const;
+const CH_INTRO    = 50; // frames of static burst before channel content
+const RAND_CH_COUNT = 7;
+const RAND_CH_PROB  = 0.15;
 
 const C = {
   bg:       "#050708",
@@ -130,70 +132,148 @@ function drawStaticBurst(ctx: CanvasRenderingContext2D) {
   }
 }
 
-// ── Milestone channels (long, triggered at hype thresholds) ──
+// ── Milestone channels ────────────────────────────────────────
+// elapsed: frames since content started (0 = first content frame)
+// total:   total content frames for this channel
 
-function drawChannelCard(ctx: CanvasRenderingContext2D, chIdx: number, timer: number) {
+function drawChannelCard(ctx: CanvasRenderingContext2D, chIdx: number, elapsed: number, total: number) {
+  const fade = Math.min(1, elapsed / 20);
+  const fadeOut = elapsed > total - 30 ? Math.max(0, 1 - (elapsed - (total - 30)) / 30) : 1;
+  const alpha = fade * fadeOut;
+
   switch (chIdx) {
+
     case 0: {
+      // 5K — Classic SMPTE color bars
       const bars = ["#c89000","#c8c800","#00c8c8","#00c820","#0020c8","#c800c8","#c80020"];
-      for (let y = 3; y < 23; y++) {
-        const b = bars[Math.floor((y - 3) * bars.length / 20) % bars.length];
-        for (let x = 4; x < 28; x++) px(ctx, x, y, b);
+      const bh = Math.floor(20 / bars.length);
+      for (let i = 0; i < bars.length; i++) {
+        const color = bars[i];
+        for (let y = 3 + i * bh; y < 3 + (i + 1) * bh && y < 23; y++)
+          for (let x = 4; x < 28; x++)
+            px(ctx, x, y, color);
       }
+      ctx.save();
+      ctx.font = "bold 16px monospace";
+      ctx.textAlign = "center";
+      ctx.fillStyle = `rgba(0,0,0,${alpha * 0.85})`;
+      ctx.fillText("5K", 96, 92);
+      ctx.restore();
       break;
     }
+
     case 1: {
-      const bars = ["#c80020","#c87000","#c8c800","#00b820","#0028c8","#6000c8"];
-      for (let x = 4; x < 28; x++) {
-        const b = bars[Math.floor((x - 4) * bars.length / 24) % bars.length];
-        for (let y = 3; y < 23; y++) px(ctx, x, y, b);
+      // 10K — VU meter equalizer
+      rect(ctx, 4, 3, 24, 20, "#020408");
+      const phases = [0, 0.9, 1.7, 2.5, 3.3, 4.1, 4.9, 5.7];
+      const barGX  = [5, 7, 9, 12, 15, 17, 20, 22];
+      for (let b = 0; b < 8; b++) {
+        const amp = 0.5 + Math.sin(elapsed * 0.09 + phases[b]) * 0.5;
+        const h = Math.round(2 + amp * 14);
+        const top = 22 - h;
+        const color = amp > 0.75 ? "#c84040" : amp > 0.42 ? "#30b840" : "#1a5c28";
+        rect(ctx, barGX[b], top, 2, h, color);
       }
+      ctx.save();
+      ctx.font = "bold 7px monospace";
+      ctx.textAlign = "center";
+      ctx.fillStyle = `rgba(42,112,144,${alpha})`;
+      ctx.fillText("10K SIGNAL", 96, 28);
+      ctx.restore();
       break;
     }
+
     case 2: {
-      for (let y = 3; y < 23; y++) {
-        for (let x = 4; x < 28; x++) {
-          const even = ((x - 4) + (y - 3)) % 2 === 0;
-          px(ctx, x, y, even ? "#0e1c28" : "#040810");
-        }
+      // 15K — Radar sweep
+      rect(ctx, 4, 3, 24, 20, "#020408");
+      const CX = 96, CY = 78;
+      const sweepAngle = (elapsed * 0.065) % (Math.PI * 2);
+      // Rings
+      for (const [r, c] of [[42,"#080e18"],[30,"#0a1620"],[20,"#0d1e2c"],[10,"#111828"]] as [number,string][]) {
+        ctx.strokeStyle = c;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(CX, CY, r, 0, Math.PI * 2);
+        ctx.stroke();
       }
-      const cx = 16, cy = 13;
-      ([[8,"#1a3040"],[5,"#2a4858"],[2,"#6a8ea8"]] as [number,string][]).forEach(([r, rc]) => {
-        for (let y = 3; y < 23; y++) for (let x = 4; x < 28; x++)
-          if (Math.round(Math.sqrt((x-cx)**2+(y-cy)**2)) === r) px(ctx, x, y, rc);
-      });
+      // Sweep gradient trail
+      const grad = ctx.createConicalGradient
+        ? null // not standard
+        : null;
+      void grad;
+      ctx.save();
+      ctx.strokeStyle = `rgba(26,104,136,${alpha * 0.8})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(CX, CY);
+      ctx.lineTo(CX + Math.cos(sweepAngle) * 44, CY + Math.sin(sweepAngle) * 44);
+      ctx.stroke();
+      ctx.restore();
+      // Blips
+      if (Math.sin(sweepAngle + 1.2) > 0.85) {
+        ctx.fillStyle = `rgba(42,136,136,${alpha})`;
+        ctx.fillRect(76, 58, 4, 4);
+      }
+      if (Math.cos(sweepAngle - 0.8) > 0.85) {
+        ctx.fillStyle = `rgba(42,100,120,${alpha})`;
+        ctx.fillRect(108, 90, 3, 3);
+      }
+      // Label
+      ctx.save();
+      ctx.font = "bold 7px monospace";
+      ctx.textAlign = "center";
+      ctx.fillStyle = `rgba(42,136,136,${alpha})`;
+      ctx.fillText("15K", 96, 130);
+      ctx.restore();
       break;
     }
+
     case 3: {
-      const pulse = Math.sin((150 - timer) * 0.12) * 0.5 + 0.5;
-      const b = Math.round(40 + pulse * 120);
-      const g = Math.round(pulse * 45);
-      ctx.fillStyle = `rgb(0,${g},${b})`;
+      // 20K — MILDRED PIERCE title card, the final milestone
+      rect(ctx, 4, 3, 24, 20, "#020308");
+      rect(ctx, 4, 4, 24, 1, "#0a1c28");
+      rect(ctx, 4, 21, 24, 1, "#0a1c28");
+      // Flickering glow behind text
+      const glow = 0.08 + Math.sin(elapsed * 0.25) * 0.04;
+      ctx.save();
+      ctx.globalAlpha = glow * alpha;
+      ctx.fillStyle = "#1a4060";
       ctx.fillRect(4 * PX, 3 * PX, 24 * PX, 20 * PX);
-      if (pulse > 0.65) {
-        px(ctx, 13, 13, "#6a98c0");
-        px(ctx, 16, 13, "#6a98c0");
-        px(ctx, 19, 13, "#6a98c0");
-      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      // Text: MILDRED
+      const flicker = Math.sin(elapsed * 0.28) > 0.6 ? 1 : 0.78;
+      ctx.save();
+      ctx.font = "bold 10px monospace";
+      ctx.textAlign = "center";
+      ctx.fillStyle = `rgba(90,148,172,${alpha * flicker})`;
+      ctx.fillText("MILDRED", 96, 68);
+      ctx.fillStyle = `rgba(58,108,140,${alpha * flicker})`;
+      ctx.fillText("PIERCE", 96, 84);
+      ctx.font = "5px monospace";
+      ctx.fillStyle = `rgba(38,80,104,${alpha * Math.min(1, elapsed / 60)})`;
+      ctx.fillText("FRACTAL AGREEMENT", 96, 102);
+      // Corners
+      ctx.restore();
+      px(ctx, 4, 3, "#0e2030"); px(ctx, 27, 3, "#0e2030");
+      px(ctx, 4, 22, "#0e2030"); px(ctx, 27, 22, "#0e2030");
       break;
     }
   }
 }
 
-// ── Random channels (short, triggered ~18% chance on click) ──
+// ── Random channels ───────────────────────────────────────────
 
 function drawRandomChannel(ctx: CanvasRenderingContext2D, idx: number, frame: number) {
   const ch = idx % RAND_CH_COUNT;
   switch (ch) {
     case 0: {
-      // Pure white/dark noise — sharp static
       for (let y = 3; y < 23; y++)
         for (let x = 4; x < 28; x++)
           px(ctx, x, y, Math.random() > 0.5 ? "#c8d0d8" : "#010306");
       break;
     }
     case 1: {
-      // Blue test tone — flat solid with center pip
       ctx.fillStyle = "#080e18";
       ctx.fillRect(4*PX, 3*PX, 24*PX, 20*PX);
       px(ctx, 15, 12, "#6a98c0"); px(ctx, 16, 12, "#6a98c0"); px(ctx, 17, 12, "#6a98c0");
@@ -202,18 +282,13 @@ function drawRandomChannel(ctx: CanvasRenderingContext2D, idx: number, frame: nu
       break;
     }
     case 2: {
-      // Snowstorm — rolling divider between dark top and static bottom
       const divY = 3 + Math.floor((frame * 0.35) % 20);
-      for (let y = 3; y < 23; y++) {
-        for (let x = 4; x < 28; x++) {
-          if (y < divY) px(ctx, x, y, "#020408");
-          else px(ctx, x, y, Math.random() > 0.45 ? "#98a0a8" : "#040810");
-        }
-      }
+      for (let y = 3; y < 23; y++)
+        for (let x = 4; x < 28; x++)
+          px(ctx, x, y, y < divY ? "#020408" : Math.random() > 0.45 ? "#98a0a8" : "#040810");
       break;
     }
     case 3: {
-      // Rolling horizontal interference bars
       for (let y = 3; y < 23; y++) {
         const band = Math.floor((frame * 0.6 + (y - 3) * 1.5) % 16);
         const inBand = band < 3;
@@ -223,11 +298,9 @@ function drawRandomChannel(ctx: CanvasRenderingContext2D, idx: number, frame: nu
       break;
     }
     case 4: {
-      // MILDRED PIERCE title card — the rare one
       rect(ctx, 4, 3, 24, 20, "#020508");
-      rect(ctx, 4, 3, 24, 2, "#0a1820");   // top bar
-      rect(ctx, 4, 21, 24, 2, "#0a1820");  // bottom bar
-      // horizontal rule lines
+      rect(ctx, 4, 3, 24, 2, "#0a1820");
+      rect(ctx, 4, 21, 24, 2, "#0a1820");
       rect(ctx, 5, 8, 22, 1, "#0e1c28");
       rect(ctx, 5, 18, 22, 1, "#0e1c28");
       ctx.save();
@@ -241,7 +314,6 @@ function drawRandomChannel(ctx: CanvasRenderingContext2D, idx: number, frame: nu
       break;
     }
     case 5: {
-      // Vertical scan lines shifting left
       for (let x = 4; x < 28; x++) {
         const phase = ((x - 4) * 3 + Math.floor(frame * 0.8)) % 8;
         const bright = phase < 2;
@@ -251,7 +323,6 @@ function drawRandomChannel(ctx: CanvasRenderingContext2D, idx: number, frame: nu
       break;
     }
     case 6: {
-      // NO SIGNAL card
       rect(ctx, 4, 3, 24, 20, "#020406");
       ctx.save();
       ctx.font = "6px monospace";
@@ -259,7 +330,6 @@ function drawRandomChannel(ctx: CanvasRenderingContext2D, idx: number, frame: nu
       ctx.fillStyle = "#142030";
       ctx.fillText("NO SIGNAL", 96, 76);
       ctx.restore();
-      // corner marks
       px(ctx, 4, 3, "#0a1420");  px(ctx, 27, 3, "#0a1420");
       px(ctx, 4, 22, "#0a1420"); px(ctx, 27, 22, "#0a1420");
       break;
@@ -279,19 +349,21 @@ export function EyeTV() {
   const noiseRef    = useRef<Noise[]>([]);
   const zzzsRef     = useRef<Zzz[]>([]);
   const rafRef      = useRef<number>(0);
-  const cooldownRef = useRef(false);
   const lookStep    = useRef(0);
   const lookCount   = useRef(LOOK_SEQ[0][1]);
 
-  // Milestone channels (long, at hype thresholds)
+  // Milestone channels
   const channelTimerRef = useRef(0);
   const channelIdxRef   = useRef(0);
   const passedRef       = useRef<Set<number>>(new Set());
   const hypeRef         = useRef(0);
 
-  // Random channels (short, ~18% per click)
+  // Random channels
   const randChTimerRef = useRef(0);
   const randChIdxRef   = useRef(0);
+
+  // Click batching — no cooldown, flush to API every 250ms
+  const pendingRef = useRef(0);
 
   const [hype, setHype] = useState(0);
   const [leaderboard, setLeaderboard] = useState<{ alias: string; clicks: number }[]>([]);
@@ -320,6 +392,7 @@ export function EyeTV() {
     } catch {}
   }, []);
 
+  // Initial fetch
   useEffect(() => {
     fetchHype();
     fetchLeaderboard();
@@ -328,6 +401,31 @@ export function EyeTV() {
     return () => { clearInterval(hypeId); clearInterval(lbId); };
   }, [fetchHype, fetchLeaderboard]);
 
+  // Batch flush — sends accumulated clicks to API every 250ms
+  useEffect(() => {
+    const id = setInterval(async () => {
+      const count = pendingRef.current;
+      if (count === 0) return;
+      pendingRef.current = 0;
+      try {
+        const r = await fetch("/api/hype", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ count }),
+        });
+        const d = await r.json();
+        if (d.total != null) {
+          const n = Number(d.total);
+          setHype(n);
+          hypeRef.current = n;
+          MILESTONES.forEach((m, i) => { if (n >= m) passedRef.current.add(i); });
+        }
+      } catch {}
+    }, 250);
+    return () => clearInterval(id);
+  }, []);
+
+  // Animation loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -378,8 +476,15 @@ export function EyeTV() {
 
       // Priority: milestone channel > random channel > normal states
       if (channelTimerRef.current > 0) {
-        if (channelTimerRef.current > 120) drawStaticBurst(ctx);
-        else drawChannelCard(ctx, channelIdxRef.current, channelTimerRef.current);
+        const chIdx    = channelIdxRef.current;
+        const maxT     = CH_DURATION[chIdx] - CH_INTRO;
+        const remaining = channelTimerRef.current;
+        if (remaining > maxT) {
+          drawStaticBurst(ctx);
+        } else {
+          const el = maxT - remaining;
+          drawChannelCard(ctx, chIdx, el, maxT);
+        }
         channelTimerRef.current--;
       } else if (randChTimerRef.current > 0) {
         drawRandomChannel(ctx, randChIdxRef.current, f);
@@ -410,47 +515,44 @@ export function EyeTV() {
     return () => cancelAnimationFrame(rafRef.current);
   }, []);
 
-  const handleClick = useCallback(async () => {
-    if (cooldownRef.current) return;
-    cooldownRef.current = true;
+  // No cooldown — register every tap/click instantly
+  const handleClick = useCallback(() => {
     stateRef.current = "active";
     activeFrame.current = 30;
     lastClick.current = Date.now();
-    setTimeout(() => { cooldownRef.current = false; }, COOLDOWN_MS);
+    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(8);
 
-    // Milestone check
     const prev = hypeRef.current;
     const next = prev + 1;
     hypeRef.current = next;
+
+    // Check milestone crossing
     let milestoneTriggered = false;
     for (let i = 0; i < MILESTONES.length; i++) {
       if (prev < MILESTONES[i] && next >= MILESTONES[i] && !passedRef.current.has(i)) {
         passedRef.current.add(i);
-        channelTimerRef.current = 150;
+        channelTimerRef.current = CH_DURATION[i];
         channelIdxRef.current = i;
         milestoneTriggered = true;
         break;
       }
     }
 
-    // Random channel flip — ~18% chance, skips if milestone just triggered
     if (!milestoneTriggered && channelTimerRef.current <= 0 && Math.random() < RAND_CH_PROB) {
-      randChTimerRef.current = 30 + Math.floor(Math.random() * 28); // 30–57 frames
+      randChTimerRef.current = 28 + Math.floor(Math.random() * 26);
       randChIdxRef.current = Math.floor(Math.random() * RAND_CH_COUNT);
     }
 
     setHype(h => h + 1);
-    try {
-      const r = await fetch("/api/hype", { method: "POST" });
-      const d = await r.json();
-      if (d.total != null) {
-        setHype(Number(d.total));
-        hypeRef.current = Number(d.total);
-      }
-    } catch {}
+    pendingRef.current++;
   }, []);
 
   const pct = Math.min((hype / HYPE_GOAL) * 100, 100);
+  const RANK_COLORS = ["#5a9ab8", "#3a7090", "#2a5068", "#1e3a4a"];
+  const RANK_PREFIX = ["#1", "#2", "#3", "#4"];
+
+  // Milestone labels for progress bar markers
+  const milestoneLabels = ["5K", "10K", "15K", "20K"];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, userSelect: "none" }}>
@@ -458,50 +560,87 @@ export function EyeTV() {
         ref={canvasRef}
         width={192}
         height={192}
-        onClick={handleClick}
-        style={{ cursor: "crosshair", imageRendering: "pixelated", display: "block" }}
+        onPointerDown={handleClick}
+        style={{ cursor: "crosshair", imageRendering: "pixelated", display: "block", touchAction: "none" }}
       />
 
-      <div style={{ width: 192, display: "flex", flexDirection: "column", gap: 8 }}>
-        {/* Hype progress bar */}
-        <div style={{ width: "100%", height: 4, background: "#0a0e14", borderRadius: 2, position: "relative", overflow: "hidden" }}>
-          <div style={{
-            position: "absolute", left: 0, top: 0, bottom: 0,
-            width: `${pct}%`,
-            background: "linear-gradient(90deg, #1a4060, #2a7090)",
-            boxShadow: "0 0 8px rgba(42,112,144,0.7)",
-            borderRadius: 2,
-            transition: "width 0.4s ease",
-          }} />
+      <div style={{ width: 220, display: "flex", flexDirection: "column", gap: 10 }}>
+
+        {/* Hype progress bar with milestone markers */}
+        <div style={{ position: "relative", width: "100%" }}>
+          <div style={{ width: "100%", height: 6, background: "#0a0e14", borderRadius: 3, overflow: "hidden", position: "relative" }}>
+            <div style={{
+              position: "absolute", left: 0, top: 0, bottom: 0,
+              width: `${pct}%`,
+              background: "linear-gradient(90deg, #1a4060, #2a8090)",
+              boxShadow: "0 0 10px rgba(42,128,144,0.7)",
+              borderRadius: 3,
+              transition: "width 0.3s ease",
+            }} />
+          </div>
+          {/* Milestone tick marks */}
+          <div style={{ position: "relative", display: "flex", justifyContent: "space-between", marginTop: 4, paddingLeft: "25%", paddingRight: 0 }}>
+            {milestoneLabels.map((label, i) => {
+              const pctPos = ((i + 1) / 4) * 100;
+              const reached = hype >= MILESTONES[i];
+              return (
+                <div key={i} style={{
+                  position: "absolute",
+                  left: `${pctPos}%`,
+                  transform: "translateX(-50%)",
+                  fontFamily: "'Press Start 2P', monospace",
+                  fontSize: 5,
+                  color: reached ? "#2a8090" : "#0e2030",
+                  letterSpacing: "0.05em",
+                }}>
+                  {label}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Hype count */}
         <p style={{
           fontFamily: "'Press Start 2P', monospace",
-          fontSize: 7,
+          fontSize: 10,
           color: "#3a6888",
-          letterSpacing: "0.12em",
+          letterSpacing: "0.10em",
           textAlign: "center",
-          margin: 0,
-          textShadow: "0 0 10px rgba(42,112,144,0.5)",
+          margin: "4px 0 0",
+          textShadow: "0 0 14px rgba(42,112,144,0.6)",
         }}>
-          HYPE {hype.toLocaleString()} / {HYPE_GOAL.toLocaleString()}
+          {hype.toLocaleString()} <span style={{ color: "#1e3a4a", fontSize: 7 }}>/ {HYPE_GOAL.toLocaleString()}</span>
         </p>
 
         {/* Leaderboard */}
         {leaderboard.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 2 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0, marginTop: 4 }}>
+            <p style={{
+              fontFamily: "'Press Start 2P', monospace",
+              fontSize: 6,
+              color: "#1a3040",
+              letterSpacing: "0.25em",
+              textAlign: "center",
+              margin: "0 0 6px",
+            }}>
+              — TOP SIGNAL —
+            </p>
             {leaderboard.map((entry, i) => (
               <div key={i} style={{
                 display: "flex",
                 justifyContent: "space-between",
+                alignItems: "center",
                 fontFamily: "'Press Start 2P', monospace",
-                fontSize: 6,
-                color: i === 0 ? "#3a6888" : "#1e3a4a",
+                fontSize: 8,
+                color: RANK_COLORS[i],
                 letterSpacing: "0.08em",
-                textShadow: i === 0 ? "0 0 8px rgba(42,112,144,0.4)" : "none",
+                padding: "3px 0",
+                borderBottom: i < leaderboard.length - 1 ? "1px solid #0a1820" : "none",
+                textShadow: i === 0 ? "0 0 10px rgba(90,154,184,0.4)" : "none",
               }}>
-                <span>{entry.alias.padEnd(4)}</span>
+                <span style={{ color: RANK_COLORS[i], opacity: 0.7, fontSize: 6 }}>{RANK_PREFIX[i]}</span>
+                <span style={{ flex: 1, paddingLeft: 6 }}>{entry.alias}</span>
                 <span>{entry.clicks.toLocaleString()}</span>
               </div>
             ))}

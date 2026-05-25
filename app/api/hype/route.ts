@@ -1,5 +1,5 @@
 import { sql } from "@vercel/postgres";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const HYPE_GOAL = 20_000;
 
@@ -23,10 +23,12 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
     await ensureTable();
-    await sql`INSERT INTO tama_scores (nick, score) VALUES ('HYPE', 1)`;
+    const body = await req.json().catch(() => ({}));
+    const count = Math.min(Math.max(1, Number(body.count ?? 1)), 100);
+    await sql`INSERT INTO tama_scores (nick, score) VALUES ('HYPE', ${count})`;
     const { rows } = await sql`SELECT COALESCE(SUM(score), 0) AS total FROM tama_scores`;
     return NextResponse.json({ ok: true, total: Number(rows[0].total), goal: HYPE_GOAL });
   } catch {
