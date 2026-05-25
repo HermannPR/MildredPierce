@@ -360,7 +360,7 @@ export default function Home() {
               <PlatformLink
                 href="/game"
                 icon={<span style={{ fontSize: 13 }}>📺</span>}
-                label="Feed the Signal"
+                label="EYETV"
                 iconColor="#7b5ea7"
               />
             </div>
