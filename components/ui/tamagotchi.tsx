@@ -390,17 +390,17 @@ function NamePicker({ onConfirm }: { onConfirm: (nick: string) => void }) {
   const btnStyle: React.CSSProperties = {
     background: "none", border: "none", cursor: "pointer",
     fontFamily: "'Press Start 2P', monospace",
-    fontSize: 9, color: "#2a6080", padding: "4px 8px", lineHeight: 1,
-    touchAction: "none",
+    fontSize: 9, color: "#2a6080", padding: "8px 12px", lineHeight: 1,
+    touchAction: "none", minWidth: 44, minHeight: 44,
   };
 
   return (
     <div style={{
-      width: 192, height: 192,
+      width: "clamp(192px, 72vw, 280px)", minHeight: "clamp(192px, 72vw, 280px)",
       background: "#050708",
       display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center",
-      gap: 12,
+      gap: 14,
       border: "1px solid #0e1c28",
       boxShadow: "0 0 30px rgba(0,60,140,0.35)",
     }}>
@@ -713,10 +713,13 @@ export function EyeTV() {
         width={192}
         height={192}
         onPointerDown={handleClick}
-        style={{ cursor: "crosshair", imageRendering: "pixelated", display: "block", touchAction: "none" }}
+        style={{
+          cursor: "crosshair", imageRendering: "pixelated", display: "block", touchAction: "none",
+          width: "clamp(192px, 72vw, 280px)", height: "clamp(192px, 72vw, 280px)",
+        }}
       />
 
-      <div style={{ width: 220, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ width: "clamp(210px, 72vw, 280px)", display: "flex", flexDirection: "column", gap: 10 }}>
 
         {/* Hype progress bar with milestone markers */}
         <div style={{ position: "relative", width: "100%" }}>
@@ -731,24 +734,17 @@ export function EyeTV() {
             }} />
           </div>
           {/* Milestone tick marks */}
-          <div style={{ position: "relative", display: "flex", justifyContent: "space-between", marginTop: 4, paddingLeft: "25%", paddingRight: 0 }}>
-            {milestoneLabels.map((label, i) => {
-              const pctPos = ((i + 1) / 4) * 100;
-              const reached = hype >= MILESTONES[i];
-              return (
-                <div key={i} style={{
-                  position: "absolute",
-                  left: `${pctPos}%`,
-                  transform: "translateX(-50%)",
-                  fontFamily: "'Press Start 2P', monospace",
-                  fontSize: 5,
-                  color: reached ? "#2a8090" : "#0e2030",
-                  letterSpacing: "0.05em",
-                }}>
-                  {label}
-                </div>
-              );
-            })}
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5 }}>
+            {milestoneLabels.map((label, i) => (
+              <span key={i} style={{
+                fontFamily: "'Press Start 2P', monospace",
+                fontSize: 5,
+                color: hype >= MILESTONES[i] ? "#2a8090" : "#0e2030",
+                letterSpacing: "0.05em",
+              }}>
+                {label}
+              </span>
+            ))}
           </div>
         </div>
 

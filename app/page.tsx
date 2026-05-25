@@ -418,7 +418,7 @@ export default function Home() {
           flex flex-col justify-end flex-1
           relative z-30
           overflow-hidden
-          min-h-[75vw] md:min-h-0 md:h-full
+          min-h-[100svh] md:min-h-0 md:h-full
         ">
           {/* Full-bleed band photo */}
           <Image
@@ -435,8 +435,8 @@ export default function Home() {
             background: "linear-gradient(to bottom, rgba(2,10,24,0.18) 0%, rgba(2,10,24,0.08) 30%, rgba(2,10,24,0.72) 65%, rgba(2,10,24,0.97) 100%)",
           }} />
 
-          {/* Right edge fade — blends into the dark video column */}
-          <div style={{
+          {/* Right edge fade — desktop only, blends into the video column */}
+          <div className="hidden md:block" style={{
             position: "absolute", inset: 0,
             background: "linear-gradient(to right, transparent 55%, rgba(2,10,24,0.88) 100%)",
           }} />
