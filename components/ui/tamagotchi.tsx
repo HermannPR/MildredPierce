@@ -931,13 +931,11 @@ export function EyeTV() {
     fetchHype();
     fetchLeaderboard();
     fetchMyScore();
-    fetchSignalMap();
     const hypeId = setInterval(fetchHype, 15_000);
     const lbId   = setInterval(fetchLeaderboard, 30_000);
     const myId   = setInterval(fetchMyScore, 30_000);
-    const mapId  = setInterval(fetchSignalMap, 60_000);
-    return () => { clearInterval(hypeId); clearInterval(lbId); clearInterval(myId); clearInterval(mapId); };
-  }, [fetchHype, fetchLeaderboard, fetchMyScore, fetchSignalMap]);
+    return () => { clearInterval(hypeId); clearInterval(lbId); clearInterval(myId); };
+  }, [fetchHype, fetchLeaderboard, fetchMyScore]);
 
   // Batch flush — sends accumulated clicks to API every 250ms
   useEffect(() => {
@@ -1255,7 +1253,7 @@ export function EyeTV() {
     );
   }
 
-  const W = "clamp(192px, 72vw, 280px)";
+  const W = "clamp(280px, 88vw, 420px)";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, userSelect: "none" }}>
@@ -1346,13 +1344,13 @@ export function EyeTV() {
 
         {/* Hype count */}
         <p style={{
-          fontFamily: "'Press Start 2P', monospace", fontSize: 11,
+          fontFamily: "'Press Start 2P', monospace", fontSize: 15,
           color: "#3a6888", letterSpacing: "0.08em",
           textAlign: "center", margin: 0,
           textShadow: "0 0 14px rgba(42,112,144,0.6)",
         }}>
           {hype.toLocaleString()}
-          <span style={{ color: "#1e3a4a", fontSize: 7 }}> / {HYPE_GOAL.toLocaleString()}</span>
+          <span style={{ color: "#1e3a4a", fontSize: 9 }}> / {HYPE_GOAL.toLocaleString()}</span>
         </p>
 
         {/* Next unlock */}
@@ -1373,12 +1371,12 @@ export function EyeTV() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <span style={{
-              fontFamily: "'Press Start 2P', monospace", fontSize: 8,
+              fontFamily: "'Press Start 2P', monospace", fontSize: 11,
               color: "#2a6888", letterSpacing: "0.1em",
               textShadow: "0 0 8px rgba(42,104,136,0.4)",
             }}>▶ {nickRef.current}</span>
             <span style={{
-              fontFamily: "'Press Start 2P', monospace", fontSize: 7,
+              fontFamily: "'Press Start 2P', monospace", fontSize: 9,
               color: "#1e5068", letterSpacing: "0.05em",
             }}>{myScore.toLocaleString()} pts</span>
           </div>
@@ -1404,7 +1402,7 @@ export function EyeTV() {
             {leaderboard.map((entry, i) => (
               <div key={i} style={{
                 display: "flex", justifyContent: "space-between", alignItems: "center",
-                fontFamily: "'Press Start 2P', monospace", fontSize: 8,
+                fontFamily: "'Press Start 2P', monospace", fontSize: 10,
                 color: RANK_COLORS[i], letterSpacing: "0.08em",
                 padding: "4px 0",
                 borderBottom: i < leaderboard.length - 1 ? "1px solid #0a1820" : "none",
@@ -1418,17 +1416,6 @@ export function EyeTV() {
           </div>
         )}
 
-        {/* Signal map */}
-        <div style={{ marginTop: 4 }}>
-          <p style={{
-            fontFamily: "'Press Start 2P', monospace", fontSize: 6,
-            color: "#1a3040", letterSpacing: "0.25em",
-            textAlign: "center", margin: "0 0 6px",
-          }}>— LIVE SIGNAL —</p>
-          <div style={{ border: "1px solid #0a1820", overflow: "hidden" }}>
-            <SignalMap data={signalMap} />
-          </div>
-        </div>
       </div>
     </div>
   );
