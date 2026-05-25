@@ -334,7 +334,7 @@ function drawRandomChannel(ctx: CanvasRenderingContext2D, idx: number, frame: nu
 
 // ── Falling sand (channel 2) ─────────────────────────────────
 const SAND_PX = 4, SAND_X0 = 24, SAND_Y0 = 18, SAND_CW = 36, SAND_CH = 30;
-const MAT_EMPTY=0, MAT_SAND=1, MAT_WATER=2, MAT_FIRE=3, MAT_WOOD=4, MAT_STONE=5, MAT_SMOKE=6;
+const MAT_EMPTY=0, MAT_SAND=1, MAT_WATER=2, MAT_FIRE=3, MAT_WOOD=4, MAT_STONE=5, MAT_SMOKE=6, MAT_ACID=7;
 const SAND_COLORS: Record<number, string[]> = {
   1:["#c8a050","#b89040","#d8b060"],
   2:["#1a50b0","#2060c0","#183898"],
@@ -342,60 +342,122 @@ const SAND_COLORS: Record<number, string[]> = {
   4:["#5a2a0e","#6a3a1e","#4a1a04"],
   5:["#404050","#505060","#383848"],
   6:["#252528","#2a2a2e","#303035"],
+  7:["#30ff00","#20e000","#48ff10"],
 };
 
 function updateSandGrid(g: Uint8Array, W: number, H: number, burnPts: { current: number }) {
-  // Sand + water: bottom-to-top so falling particles cascade naturally
+  // Per-frame "already moved" flag prevents double-processing (fast-fall + water spreading across screen)
+  const updated = new Uint8Array(W * H);
+
+  // Sand + water + acid: bottom-to-top so falling particles cascade naturally
   for (let y = H-1; y >= 0; y--) {
     const flip = Math.random() > 0.5;
     for (let xi = 0; xi < W; xi++) {
       const x = flip ? xi : W-1-xi;
-      const i = y*W+x, m = g[i];
+      const i = y*W+x;
+      if (updated[i]) continue;
+      const m = g[i];
       if (!m) continue;
+
       if (m === MAT_SAND) {
         if (y===H-1) continue;
         const b=(y+1)*W+x;
-        if (!g[b]||g[b]===MAT_WATER){g[i]=g[b];g[b]=MAT_SAND;continue;}
-        for (const dx of [flip?-1:1, flip?1:-1]) {
+        if ((!g[b]||g[b]===MAT_WATER) && !updated[b]) {
+          updated[i]=1; updated[b]=1;
+          const tmp=g[b]; g[b]=MAT_SAND; g[i]=tmp; continue;
+        }
+        for (const dx of (flip ? [-1,1] : [1,-1])) {
           if (x+dx<0||x+dx>=W) continue;
           const nb=(y+1)*W+(x+dx);
-          if (!g[nb]||g[nb]===MAT_WATER){g[i]=g[nb];g[nb]=MAT_SAND;break;}
+          if ((!g[nb]||g[nb]===MAT_WATER) && !updated[nb]) {
+            updated[i]=1; updated[nb]=1;
+            const tmp=g[nb]; g[nb]=MAT_SAND; g[i]=tmp; break;
+          }
         }
-      } else if (m === MAT_WATER) {
-        if (y<H-1){const b=(y+1)*W+x;if(!g[b]){g[b]=MAT_WATER;g[i]=0;continue;}}
-        for (const dx of [flip?-1:1, flip?1:-1]) {
+
+      } else if (m === MAT_WATER || m === MAT_ACID) {
+        // Fall straight down
+        if (y < H-1) {
+          const b=(y+1)*W+x;
+          if (!g[b] && !updated[b]) {
+            updated[i]=1; updated[b]=1; g[b]=m; g[i]=0; continue;
+          }
+          // Fall diagonally (try before horizontal spread)
+          let diag=false;
+          for (const dx of (flip ? [-1,1] : [1,-1])) {
+            if (x+dx<0||x+dx>=W) continue;
+            const nb=(y+1)*W+(x+dx);
+            if (!g[nb] && !updated[nb]) {
+              updated[i]=1; updated[nb]=1; g[nb]=m; g[i]=0; diag=true; break;
+            }
+          }
+          if (diag) continue;
+        }
+        // Horizontal spread (liquid behavior)
+        for (const dx of (flip ? [-1,1] : [1,-1])) {
           if (x+dx<0||x+dx>=W) continue;
-          if (!g[y*W+(x+dx)]){g[y*W+(x+dx)]=MAT_WATER;g[i]=0;break;}
+          const ni=y*W+(x+dx);
+          if (!g[ni] && !updated[ni]) {
+            updated[i]=1; updated[ni]=1; g[ni]=m; g[i]=0; break;
+          }
+        }
+        // Acid corrodes adjacent sand, wood, stone
+        if (m === MAT_ACID) {
+          for (const [dx,dy] of [[0,1],[1,0],[-1,0],[0,-1]] as [number,number][]) {
+            const nx=x+dx,ny=y+dy;
+            if (nx<0||nx>=W||ny<0||ny>=H) continue;
+            const t=g[ny*W+nx];
+            if ((t===MAT_SAND||t===MAT_WOOD||t===MAT_STONE) && Math.random()<0.03) {
+              g[ny*W+nx]=0; g[i]=0; break;
+            }
+          }
         }
       }
     }
   }
+
   // Fire + smoke: top-to-bottom so upward movement doesn't double-process
   for (let y = 0; y < H; y++) {
     const flip = Math.random() > 0.5;
     for (let xi = 0; xi < W; xi++) {
       const x = flip ? xi : W-1-xi;
-      const i = y*W+x, m = g[i];
+      const i = y*W+x;
+      if (updated[i]) continue;
+      const m = g[i];
       if (!m) continue;
+
       if (m === MAT_FIRE) {
-        let out=false;
+        let ext=false;
         for (const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]] as [number,number][]) {
           const nx=x+dx,ny=y+dy;
           if (nx<0||nx>=W||ny<0||ny>=H) continue;
           const ni=ny*W+nx;
-          if (g[ni]===MAT_WATER){g[i]=0;g[ni]=0;out=true;break;}
-          if (g[ni]===MAT_WOOD&&Math.random()<0.04){g[ni]=MAT_FIRE;burnPts.current++;}
+          if (g[ni]===MAT_WATER||g[ni]===MAT_ACID) { g[i]=0; g[ni]=0; ext=true; break; }
+          if (g[ni]===MAT_WOOD && Math.random()<0.04) { g[ni]=MAT_FIRE; burnPts.current++; }
         }
-        if (out) continue;
-        if (y>0&&Math.random()<0.25){const ai=(y-1)*W+x;if(!g[ai]){g[ai]=MAT_FIRE;g[i]=MAT_SMOKE;continue;}}
-        if (Math.random()<0.015) g[i]=MAT_SMOKE;
-      } else if (m === MAT_SMOKE) {
-        if (Math.random()<0.025){g[i]=0;continue;}
-        if (y>0&&Math.random()<0.35){
+        if (ext) continue;
+        if (y>0 && Math.random()<0.25) {
           const ai=(y-1)*W+x;
-          if (!g[ai]){g[ai]=MAT_SMOKE;g[i]=0;continue;}
+          if (!g[ai] && !updated[ai]) {
+            updated[i]=1; updated[ai]=1; g[ai]=MAT_FIRE; g[i]=MAT_SMOKE; continue;
+          }
+        }
+        if (Math.random()<0.02) g[i]=MAT_SMOKE;
+
+      } else if (m === MAT_SMOKE) {
+        if (Math.random()<0.025) { g[i]=0; continue; }
+        if (y>0 && Math.random()<0.35) {
+          const ai=(y-1)*W+x;
+          if (!g[ai] && !updated[ai]) {
+            updated[i]=1; updated[ai]=1; g[ai]=MAT_SMOKE; g[i]=0; continue;
+          }
           const dx=flip?-1:1;
-          if (x+dx>=0&&x+dx<W&&!g[(y-1)*W+(x+dx)]){g[(y-1)*W+(x+dx)]=MAT_SMOKE;g[i]=0;}
+          if (x+dx>=0&&x+dx<W) {
+            const si=(y-1)*W+(x+dx);
+            if (!g[si] && !updated[si]) {
+              updated[i]=1; updated[si]=1; g[si]=MAT_SMOKE; g[i]=0;
+            }
+          }
         }
       }
     }
@@ -1143,25 +1205,36 @@ export function EyeTV() {
 
       {/* Material palette — only in sandbox channel */}
       {activeCh===2 && (
-        <div style={{ display:"flex", gap:5, flexWrap:"wrap", justifyContent:"center", width:W }}>
-          {([
-            {mat:MAT_SAND,  label:"SAND",  color:"#c8a050"},
-            {mat:MAT_WATER, label:"WATER", color:"#2060c0"},
-            {mat:MAT_FIRE,  label:"FIRE",  color:"#e04010"},
-            {mat:MAT_WOOD,  label:"WOOD",  color:"#6a3a1a"},
-            {mat:MAT_STONE, label:"STONE", color:"#505060"},
-            {mat:MAT_EMPTY, label:"ERASE", color:"#303030"},
-          ] as {mat:number,label:string,color:string}[]).map(({mat,label,color})=>(
-            <button key={mat} onPointerDown={()=>{setSandBrush(mat);sandBrushRef.current=mat;}} style={{
+        <div style={{ display:"flex", flexDirection:"column", gap:5, alignItems:"center", width:W }}>
+          <div style={{ display:"flex", gap:5, flexWrap:"wrap", justifyContent:"center" }}>
+            {([
+              {mat:MAT_SAND,  label:"SAND",  color:"#c8a050"},
+              {mat:MAT_WATER, label:"WATER", color:"#2060c0"},
+              {mat:MAT_FIRE,  label:"FIRE",  color:"#e04010"},
+              {mat:MAT_WOOD,  label:"WOOD",  color:"#6a3a1a"},
+              {mat:MAT_STONE, label:"STONE", color:"#505060"},
+              {mat:MAT_ACID,  label:"ACID",  color:"#30ff00"},
+              {mat:MAT_EMPTY, label:"ERASE", color:"#303030"},
+            ] as {mat:number,label:string,color:string}[]).map(({mat,label,color})=>(
+              <button key={mat} onPointerDown={()=>{setSandBrush(mat);sandBrushRef.current=mat;}} style={{
+                fontFamily:"'Press Start 2P', monospace", fontSize:6,
+                background:sandBrush===mat?color:"#050a0f",
+                border:`1px solid ${sandBrush===mat?color:"#0e1c28"}`,
+                color:sandBrush===mat?"#fff":color,
+                padding:"5px 8px", cursor:"pointer", touchAction:"none",
+                boxShadow:sandBrush===mat?`0 0 8px ${color}70`:"none",
+                minWidth:44,
+              }}>{label}</button>
+            ))}
+          </div>
+          <button
+            onPointerDown={()=>{ sandGrid.current.fill(0); }}
+            style={{
               fontFamily:"'Press Start 2P', monospace", fontSize:6,
-              background:sandBrush===mat?color:"#050a0f",
-              border:`1px solid ${sandBrush===mat?color:"#0e1c28"}`,
-              color:sandBrush===mat?"#fff":color,
-              padding:"5px 8px", cursor:"pointer", touchAction:"none",
-              boxShadow:sandBrush===mat?`0 0 8px ${color}70`:"none",
-              minWidth:44,
-            }}>{label}</button>
-          ))}
+              background:"#050a0f", border:"1px solid #1a2030",
+              color:"#1e3a4a", padding:"5px 12px", cursor:"pointer", touchAction:"none",
+            }}
+          >CLEAR</button>
         </div>
       )}
 
