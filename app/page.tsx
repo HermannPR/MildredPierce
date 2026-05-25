@@ -118,78 +118,100 @@ function PlatformLink({
   );
 }
 
-// ── Tiny animated TV — static → eye → color bars ─────────────
-function EasterEggTV() {
+// ── Animated easter egg TV — static → eye (looking) → color bars ──
+function EasterEggTV({ glitchRef }: { glitchRef: React.RefObject<boolean> }) {
   const cvRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const cv = cvRef.current; if (!cv) return;
     const ctx = cv.getContext("2d")!;
-    const W = 32, H = 26;
-    // Cycle: 90fr static | 180fr eye | 90fr colors = 360fr (~6s @ 60fps)
-    const CYCLE = 360;
-    const LOOK: [number,number][] = [[0,0],[2,0],[0,-1],[2,-1],[-2,0],[0,0],[-1,1],[0,0]];
-    let f = 0, rafId = 0;
+    const W = 48, H = 40;
+    // Phase cycle: 0-59 static | 60-479 eye | 480-539 colors (~9s @30fps)
+    const PHASE_CYCLE = 540;
+    // Look: [dx, dy, hold_frames] — eerie deliberate movement
+    const LOOK_SEQ: [number,number,number][] = [
+      [ 0,  0, 90], [ 4,  0, 38], [ 0,  0, 50],
+      [-4,  0, 32], [ 0,  0, 45], [ 0, -2, 28],
+      [ 4, -2, 35], [ 0,  0,110], [-4,  2, 28],
+      [ 0,  0, 65], [ 3,  0, 30], [ 0,  0, 80],
+    ];
+    let phase = 0, rafId = 0, lastT = 0;
+    let lookStep = 0, lookCount = LOOK_SEQ[0][2], blinkTimer = 0;
 
     const bezel = () => {
-      ctx.fillStyle = "#0b0b10"; ctx.fillRect(0, 0, W, 20);
-      ctx.fillStyle = "#040810"; ctx.fillRect(2, 2, 28, 15);
-      ctx.fillStyle = "#07070e"; ctx.fillRect(13,20, 6, 3);
-      ctx.fillStyle = "#050508"; ctx.fillRect(10,23,12, 3);
-      ctx.fillStyle = "#003820"; ctx.fillRect(28,18, 2, 1);
+      ctx.fillStyle = "#0b0b10"; ctx.fillRect(0, 0, W, 32);
+      ctx.fillStyle = "#111118";
+      ctx.fillRect(0, 0, W, 1); ctx.fillRect(0, 0, 1, 32);
+      ctx.fillStyle = "#030306";
+      ctx.fillRect(0, 31, W, 1); ctx.fillRect(W-1, 0, 1, 32);
+      ctx.fillStyle = "#040810"; ctx.fillRect(3, 3, 42, 25);
+      ctx.fillStyle = "#07070e"; ctx.fillRect(18, 32, 12, 4);
+      ctx.fillStyle = "#050508"; ctx.fillRect(14, 36, 20, 4);
+      ctx.fillStyle = "#003820"; ctx.fillRect(43, 29, 2, 1);
     };
     const scanlines = () => {
-      ctx.globalAlpha = 0.28;
-      ctx.fillStyle = "#000";
-      for (let y = 2; y < 17; y += 2) ctx.fillRect(2, y, 28, 1);
+      ctx.globalAlpha = 0.22; ctx.fillStyle = "#000";
+      for (let y = 3; y < 28; y += 2) ctx.fillRect(3, y, 42, 1);
       ctx.globalAlpha = 1;
     };
     const drawStatic = () => {
-      for (let y = 2; y < 17; y++)
-        for (let x = 2; x < 30; x++) {
-          ctx.fillStyle = Math.random() > 0.5 ? "#4a6070" : "#020408";
+      for (let y = 3; y < 28; y++)
+        for (let x = 3; x < 45; x++) {
+          ctx.fillStyle = Math.random() > 0.5 ? "#3a5060" : "#010306";
           ctx.fillRect(x, y, 1, 1);
         }
     };
-    const drawEye = (ef: number) => {
-      const blink = ef % 100 > 95;
-      const [lx, ly] = LOOK[Math.floor(ef / 22) % LOOK.length];
-      ctx.fillStyle = "#6a8ea8"; ctx.fillRect(5, 3, 20, 10);
-      // cut corners
+    const drawEye = (lx: number, ly: number, blink: boolean) => {
+      // Eye white 38×19 at (5,5), corners cut 3×3
+      ctx.fillStyle = "#6a8ea8"; ctx.fillRect(5, 5, 38, 19);
       ctx.fillStyle = "#040810";
-      ctx.fillRect(5,3,2,2); ctx.fillRect(23,3,2,2);
-      ctx.fillRect(5,11,2,2); ctx.fillRect(23,11,2,2);
+      ctx.fillRect(5,5,3,3); ctx.fillRect(40,5,3,3);
+      ctx.fillRect(5,21,3,3); ctx.fillRect(40,21,3,3);
+      // Phosphor bloom
+      ctx.globalAlpha = 0.06; ctx.fillStyle = "#6a8ea8";
+      ctx.fillRect(4, 4, 40, 21); ctx.globalAlpha = 1;
+      const cx = 24, cy = 14;
       if (blink) {
-        ctx.fillStyle = "#6a8ea8"; ctx.fillRect(5, 7, 20, 2);
-        ctx.fillStyle = "#040810"; ctx.fillRect(5,3,20,4); ctx.fillRect(5,9,20,4);
+        ctx.fillStyle = "#6a8ea8"; ctx.fillRect(8, cy, 32, 2);
+        ctx.fillStyle = "#040810";
+        ctx.fillRect(8, 8, 32, cy-8); ctx.fillRect(8, cy+2, 32, 12);
       } else {
-        const cx = 14, cy = 7;
-        ctx.fillStyle = "#0e2030"; ctx.fillRect(cx+lx-1,cy+ly-1,5,5);
-        ctx.fillStyle = "#163040"; ctx.fillRect(cx+lx-1,cy+ly-1,5,1);
-        ctx.fillStyle = "#010306"; ctx.fillRect(cx+lx,  cy+ly,  3,3);
-        ctx.fillStyle = "#6a98c0"; ctx.fillRect(cx+lx,  cy+ly,  1,1);
+        // Iris 10×10
+        ctx.fillStyle = "#0e2030"; ctx.fillRect(cx-5+lx, cy-5+ly, 10, 10);
+        ctx.fillStyle = "#163040"; ctx.fillRect(cx-5+lx, cy-5+ly, 10, 1);
+        ctx.fillStyle = "#1a3848"; ctx.fillRect(cx-5+lx, cy-4+ly,  1, 1);
+        // Pupil 6×6
+        ctx.fillStyle = "#010306"; ctx.fillRect(cx-3+lx, cy-3+ly, 6, 6);
+        // Shine 2×2
+        ctx.fillStyle = "#6a98c0"; ctx.fillRect(cx-3+lx, cy-3+ly, 2, 2);
       }
     };
     const drawColors = () => {
-      const bars = ["#7a5000","#7a7a00","#007a7a","#007a10","#00107a","#7a007a","#7a1000"];
-      const bw = Math.floor(28 / bars.length);
-      bars.forEach((c,i) => { ctx.fillStyle=c; ctx.fillRect(2+i*bw,2,bw,15); });
+      const bars = ["#6a4800","#6a6a00","#006a6a","#006a10","#00106a","#6a006a","#6a1000"];
+      const bw = Math.floor(42 / bars.length);
+      bars.forEach((c,i) => { ctx.fillStyle=c; ctx.fillRect(3+i*bw,3,bw,25); });
     };
 
-    const loop = () => {
-      f = (f + 1) % CYCLE;
-      ctx.clearRect(0,0,W,H);
-      bezel();
-      if      (f < 90)  drawStatic();
-      else if (f < 270) drawEye(f - 90);
-      else              drawColors();
-      scanlines();
+    const loop = (now: number) => {
       rafId = requestAnimationFrame(loop);
+      if (now - lastT < 34) return; // 30fps
+      lastT = now;
+      phase = (phase + 1) % PHASE_CYCLE;
+      lookCount--; if (lookCount <= 0) { lookStep=(lookStep+1)%LOOK_SEQ.length; lookCount=LOOK_SEQ[lookStep][2]; }
+      blinkTimer = (blinkTimer + 1) % 200;
+
+      ctx.clearRect(0,0,W,H); bezel();
+      if (glitchRef.current || phase < 60) drawStatic();
+      else if (phase < 480) drawEye(LOOK_SEQ[lookStep][0], LOOK_SEQ[lookStep][1], blinkTimer >= 196);
+      else drawColors();
+      scanlines();
     };
     rafId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafId);
-  }, []);
-  return <canvas ref={cvRef} width={32} height={26}
-    style={{ display:"block", width:64, height:52, imageRendering:"pixelated", cursor:"crosshair" }} />;
+  }, [glitchRef]);
+
+  // 48×40 canvas at 2× = 96×80 CSS px
+  return <canvas ref={cvRef} width={48} height={40}
+    style={{ display:"block", width:96, height:80, imageRendering:"pixelated", cursor:"crosshair" }} />;
 }
 
 export default function Home() {
@@ -201,13 +223,16 @@ export default function Home() {
   const [pixelPos,     setPixelPos]     = useState({ x: 0, y: 0 });
   const [expandPhase,  setExpandPhase]  = useState<"idle" | "start" | "growing">("idle");
   const [expandOrigin, setExpandOrigin] = useState({ x: 0, y: 0 });
-  const dirRef      = useRef({ dx: 1, dy: 1 });
-  const jumpTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [teleportPhase, setTeleportPhase] = useState<"visible" | "out" | "in">("visible");
+  const glitchRef      = useRef(false);
+  const teleportTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const handleCRTDone = useCallback(() => setCRTDone(true), []);
 
   const handlePixelClick = useCallback((e: React.MouseEvent) => {
     if (expandPhase !== "idle") return;
+    clearTimeout(teleportTimerRef.current);
+    glitchRef.current = false;
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setExpandOrigin({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
     setExpandPhase("start");
@@ -224,44 +249,45 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
-  // Pixel-grid walk — steps one cell at a time, bounces off edges
+  // Init: place easter egg slightly off-center on mount
   useEffect(() => {
-    if (expandPhase !== "idle") return;
-    const GRID = 32;
-    const STEP = 380;
-
-    // Start slightly off-center — curious but not dead-center
     setPixelPos({
-      x: Math.floor((window.innerWidth  * 0.42) / GRID) * GRID,
-      y: Math.floor((window.innerHeight * 0.36) / GRID) * GRID,
+      x: Math.floor(window.innerWidth  * 0.42),
+      y: Math.floor(window.innerHeight * 0.38),
     });
+  }, []);
 
-    const step = () => {
-      setPixelPos(prev => {
-        let { dx, dy } = dirRef.current;
-        if (Math.random() < 0.20) {
-          if (Math.random() < 0.5) dx = -dx;
-          else                     dy = -dy;
-        }
-        let x = prev.x + dx * GRID;
-        let y = prev.y + dy * GRID;
-        // Constrain to center band: 20–75% width, 18–72% height
-        const minX = Math.floor((window.innerWidth  * 0.20) / GRID) * GRID;
-        const minY = Math.floor((window.innerHeight * 0.18) / GRID) * GRID;
-        const maxX = Math.floor((window.innerWidth  * 0.75) / GRID) * GRID;
-        const maxY = Math.floor((window.innerHeight * 0.72) / GRID) * GRID;
-        if (x < minX) { x = minX; dx =  1; }
-        if (y < minY) { y = minY; dy =  1; }
-        if (x > maxX) { x = maxX; dx = -1; }
-        if (y > maxY) { y = maxY; dy = -1; }
-        dirRef.current = { dx, dy };
-        return { x, y };
+  // Schedule next teleport when visible
+  useEffect(() => {
+    if (teleportPhase !== "visible" || expandPhase !== "idle") return;
+    const hold = 4000 + Math.random() * 5000;
+    teleportTimerRef.current = setTimeout(() => {
+      glitchRef.current = true;
+      setTeleportPhase("out");
+    }, hold);
+    return () => clearTimeout(teleportTimerRef.current);
+  }, [teleportPhase, expandPhase]);
+
+  // Out: wait 300ms, jump to new pos, go to "in"
+  useEffect(() => {
+    if (teleportPhase !== "out") return;
+    teleportTimerRef.current = setTimeout(() => {
+      setPixelPos({
+        x: Math.floor(window.innerWidth  * (0.20 + Math.random() * 0.55)),
+        y: Math.floor(window.innerHeight * (0.18 + Math.random() * 0.54)),
       });
-      jumpTimerRef.current = setTimeout(step, STEP);
-    };
-    jumpTimerRef.current = setTimeout(step, STEP);
-    return () => clearTimeout(jumpTimerRef.current);
-  }, [expandPhase]);
+      glitchRef.current = false;
+      setTeleportPhase("in");
+    }, 300);
+    return () => clearTimeout(teleportTimerRef.current);
+  }, [teleportPhase]);
+
+  // In: wait 300ms then mark visible again
+  useEffect(() => {
+    if (teleportPhase !== "in") return;
+    teleportTimerRef.current = setTimeout(() => setTeleportPhase("visible"), 300);
+    return () => clearTimeout(teleportTimerRef.current);
+  }, [teleportPhase]);
 
   // Expand phase 1→2: one double-rAF so the start circle renders before transition kicks in
   useEffect(() => {
@@ -502,7 +528,7 @@ export default function Home() {
         </section>
       </div>
 
-      {/* ── Dead pixel easter egg — pixel-grid walk, click to expand → /game ── */}
+      {/* ── Dead pixel easter egg — teleport with glitch, click to expand → /game ── */}
       <div
         onClick={handlePixelClick}
         style={{
@@ -510,13 +536,13 @@ export default function Home() {
           left: pixelPos.x,
           top:  pixelPos.y,
           zIndex: 50,
-          opacity: expandPhase !== "idle" ? 0 : 0.28,
-          transition: "opacity 0.3s",
+          opacity: expandPhase !== "idle" ? 0 : teleportPhase === "out" ? 0 : 0.28,
+          transition: "opacity 0.28s",
         }}
-        onMouseEnter={e => { if (expandPhase === "idle") (e.currentTarget as HTMLElement).style.opacity = "0.78"; }}
+        onMouseEnter={e => { if (expandPhase === "idle" && teleportPhase === "visible") (e.currentTarget as HTMLElement).style.opacity = "0.78"; }}
         onMouseLeave={e => { if (expandPhase === "idle") (e.currentTarget as HTMLElement).style.opacity = "0.28"; }}
       >
-        <EasterEggTV />
+        <EasterEggTV glitchRef={glitchRef} />
       </div>
 
       {/* Expand overlay — dark circle floods screen on click */}
