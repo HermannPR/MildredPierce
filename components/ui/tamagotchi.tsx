@@ -338,46 +338,13 @@ const CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 function NamePicker({ onConfirm }: { onConfirm: (nick: string) => void }) {
   const [chars, setChars] = useState(["A","A","A","A"]);
-  const [cursor, setCursor] = useState(0); // active slot
+  const [cursor, setCursor] = useState(0);
   const [blink, setBlink] = useState(true);
 
-  // Cursor blink
   useEffect(() => {
     const id = setInterval(() => setBlink(b => !b), 530);
     return () => clearInterval(id);
   }, []);
-
-  // Keyboard input — type 4 letters to auto-confirm
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (/^[a-zA-Z]$/.test(e.key)) {
-        const letter = e.key.toUpperCase();
-        let nextCursor = cursor;
-        let nextChars: string[] = [];
-        setChars(prev => {
-          const next = [...prev];
-          next[cursor] = letter;
-          nextChars = next;
-          return next;
-        });
-        nextCursor = cursor + 1;
-        if (nextCursor >= 4) {
-          // All 4 letters typed — auto-confirm after state settles
-          setTimeout(() => onConfirm(nextChars.join("")), 80);
-        } else {
-          setCursor(nextCursor);
-        }
-      } else if (e.key === "Backspace") {
-        const slot = cursor > 0 && chars[cursor] === "A" ? cursor - 1 : cursor;
-        setChars(prev => { const next = [...prev]; next[slot] = "A"; return next; });
-        setCursor(Math.max(slot, 0));
-      } else if (e.key === "Enter") {
-        onConfirm(chars.join(""));
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [cursor, chars, onConfirm]);
 
   const cycle = (slot: number, dir: 1 | -1) => {
     if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(5);
@@ -390,56 +357,68 @@ function NamePicker({ onConfirm }: { onConfirm: (nick: string) => void }) {
     });
   };
 
+  // Arrow keys navigate slots / cycle letters — no typing
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if      (e.key === "ArrowLeft")  setCursor(c => Math.max(0, c - 1));
+      else if (e.key === "ArrowRight") setCursor(c => Math.min(3, c + 1));
+      else if (e.key === "ArrowUp")   { e.preventDefault(); cycle(cursor, -1); }
+      else if (e.key === "ArrowDown") { e.preventDefault(); cycle(cursor,  1); }
+      else if (e.key === "Enter")      onConfirm(chars.join(""));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [cursor, chars, onConfirm]);
+
   const confirm = () => onConfirm(chars.join(""));
 
   const btnStyle: React.CSSProperties = {
     background: "none", border: "none", cursor: "pointer",
     fontFamily: "'Press Start 2P', monospace",
-    fontSize: 9, color: "#2a6080", padding: "8px 12px", lineHeight: 1,
-    touchAction: "none", minWidth: 44, minHeight: 44,
+    fontSize: 16, color: "#2a6080", padding: "10px 14px", lineHeight: 1,
+    touchAction: "none", minWidth: 56, minHeight: 52,
   };
 
   return (
     <div style={{
-      width: "clamp(192px, 72vw, 280px)", minHeight: "clamp(192px, 72vw, 280px)",
+      width: "clamp(280px, 90vw, 340px)", minHeight: "clamp(260px, 72vw, 320px)",
       background: "#050708",
       display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center",
-      gap: 14,
+      gap: 18,
       border: "1px solid #0e1c28",
       boxShadow: "0 0 30px rgba(0,60,140,0.35)",
     }}>
       <p style={{
         fontFamily: "'Press Start 2P', monospace",
-        fontSize: 9, color: "#3a6888", letterSpacing: "0.2em",
+        fontSize: 10, color: "#3a6888", letterSpacing: "0.2em",
         margin: 0, textShadow: "0 0 10px rgba(42,112,144,0.5)",
       }}>CALL SIGN</p>
 
-      <div style={{ display: "flex", gap: 8 }}>
+      <div style={{ display: "flex", gap: 10 }}>
         {[0,1,2,3].map(slot => {
           const active = slot === cursor;
           return (
-            <div key={slot} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+            <div key={slot} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
               <button onPointerDown={() => cycle(slot, -1)} style={btnStyle}>▲</button>
               <div
                 onPointerDown={() => setCursor(slot)}
                 style={{
-                  width: 40, height: 46, background: active ? "#0d1820" : "#080d14",
-                  border: `1px solid ${active ? "#2a5a80" : "#1a3a50"}`,
-                  boxShadow: active ? "0 0 8px rgba(42,90,128,0.5)" : "none",
+                  width: 58, height: 72, background: active ? "#0d1820" : "#080d14",
+                  border: `2px solid ${active ? "#2a5a80" : "#1a3a50"}`,
+                  boxShadow: active ? "0 0 14px rgba(42,90,128,0.65)" : "none",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontFamily: "'Press Start 2P', monospace", fontSize: 20,
+                  fontFamily: "'Press Start 2P', monospace", fontSize: 30,
                   color: active ? "#7ab8d8" : "#5a9ab8",
-                  textShadow: active ? "0 0 10px rgba(122,184,216,0.7)" : "0 0 6px rgba(90,154,184,0.4)",
+                  textShadow: active ? "0 0 16px rgba(122,184,216,0.85)" : "0 0 8px rgba(90,154,184,0.4)",
                   cursor: "pointer", position: "relative",
                 }}>
                 {chars[slot]}
-                {/* blinking underscore cursor */}
                 {active && (
                   <span style={{
-                    position: "absolute", bottom: 5, left: "50%",
+                    position: "absolute", bottom: 7, left: "50%",
                     transform: "translateX(-50%)",
-                    width: 14, height: 2,
+                    width: 20, height: 2,
                     background: blink ? "#5a9ab8" : "transparent",
                   }} />
                 )}
@@ -453,12 +432,12 @@ function NamePicker({ onConfirm }: { onConfirm: (nick: string) => void }) {
       <button
         onPointerDown={confirm}
         style={{
-          marginTop: 2, background: "#0a1820",
+          marginTop: 4, background: "#0a1820",
           border: "1px solid #1a4060", cursor: "pointer",
           fontFamily: "'Press Start 2P', monospace",
-          fontSize: 9, color: "#3a8090", letterSpacing: "0.2em",
-          padding: "10px 20px", textShadow: "0 0 8px rgba(42,128,144,0.5)",
-          boxShadow: "0 0 12px rgba(0,60,140,0.25)", touchAction: "none",
+          fontSize: 11, color: "#3a8090", letterSpacing: "0.2em",
+          padding: "13px 28px", textShadow: "0 0 8px rgba(42,128,144,0.5)",
+          boxShadow: "0 0 14px rgba(0,60,140,0.3)", touchAction: "none",
         }}
       >
         START ▶
@@ -505,6 +484,7 @@ export function EyeTV() {
 
   const [phase, setPhase] = useState<"pick" | "play">("pick");
   const [hype, setHype] = useState(0);
+  const [myScore, setMyScore] = useState(0);
   const [leaderboard, setLeaderboard] = useState<{ alias: string; clicks: number }[]>([]);
 
   const fetchHype = useCallback(async () => {
@@ -531,12 +511,26 @@ export function EyeTV() {
     } catch {}
   }, []);
 
+  const fetchMyScore = useCallback(async () => {
+    const nick = nickRef.current;
+    if (!nick || nick === "ANON") return;
+    try {
+      const r = await fetch(`/api/myscore?nick=${nick}`);
+      const d = await r.json();
+      setMyScore(Number(d.total ?? 0));
+    } catch {}
+  }, []);
+
   // Restore saved nick from localStorage
   useEffect(() => {
     const saved = localStorage.getItem("eyetv_nick");
     if (saved && /^[A-Z]{4}$/.test(saved)) {
       nickRef.current = saved;
       setPhase("play");
+      fetch(`/api/myscore?nick=${saved}`)
+        .then(r => r.json())
+        .then(d => setMyScore(Number(d.total ?? 0)))
+        .catch(() => {});
     }
   }, []);
 
@@ -544,10 +538,12 @@ export function EyeTV() {
   useEffect(() => {
     fetchHype();
     fetchLeaderboard();
+    fetchMyScore();
     const hypeId = setInterval(fetchHype, 15_000);
     const lbId   = setInterval(fetchLeaderboard, 30_000);
-    return () => { clearInterval(hypeId); clearInterval(lbId); };
-  }, [fetchHype, fetchLeaderboard]);
+    const myId   = setInterval(fetchMyScore, 30_000);
+    return () => { clearInterval(hypeId); clearInterval(lbId); clearInterval(myId); };
+  }, [fetchHype, fetchLeaderboard, fetchMyScore]);
 
   // Batch flush — sends accumulated clicks to API every 250ms
   useEffect(() => {
@@ -568,6 +564,7 @@ export function EyeTV() {
           hypeRef.current = n;
           MILESTONES.forEach((m, i) => { if (n >= m) passedRef.current.add(i); });
         }
+        setMyScore(s => s + count);
       } catch {}
     }, 250);
     return () => clearInterval(id);
@@ -770,6 +767,11 @@ export function EyeTV() {
     nickRef.current = nick;
     localStorage.setItem("eyetv_nick", nick);
     setPhase("play");
+    setMyScore(0);
+    fetch(`/api/myscore?nick=${nick}`)
+      .then(r => r.json())
+      .then(d => setMyScore(Number(d.total ?? 0)))
+      .catch(() => {});
     if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([10, 30, 10]);
   }, []);
 
@@ -846,15 +848,21 @@ export function EyeTV() {
         {/* Divider */}
         <div style={{ height: 1, background: "#0a1820", margin: "2px 0" }} />
 
-        {/* Nick + change */}
+        {/* Nick + personal score + change */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{
-            fontFamily: "'Press Start 2P', monospace", fontSize: 8,
-            color: "#2a6888", letterSpacing: "0.1em",
-            textShadow: "0 0 8px rgba(42,104,136,0.4)",
-          }}>▶ {nickRef.current}</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{
+              fontFamily: "'Press Start 2P', monospace", fontSize: 8,
+              color: "#2a6888", letterSpacing: "0.1em",
+              textShadow: "0 0 8px rgba(42,104,136,0.4)",
+            }}>▶ {nickRef.current}</span>
+            <span style={{
+              fontFamily: "'Press Start 2P', monospace", fontSize: 7,
+              color: "#1e5068", letterSpacing: "0.05em",
+            }}>{myScore.toLocaleString()} pts</span>
+          </div>
           <button
-            onPointerDown={() => { localStorage.removeItem("eyetv_nick"); setPhase("pick"); }}
+            onPointerDown={() => { localStorage.removeItem("eyetv_nick"); setPhase("pick"); setMyScore(0); }}
             style={{
               background: "none", border: "1px solid #0e2030", cursor: "pointer",
               fontFamily: "'Press Start 2P', monospace", fontSize: 6,
