@@ -123,11 +123,9 @@ export default function Home() {
   const [crtDone,   setCRTDone]   = useState(false);
   const [smokeHue,  setSmokeHue]  = useState("#001840");
 
-  // Dead pixel easter egg — grid-snap movement + expand-to-fill transition
-  const [pixelPos,    setPixelPos]    = useState({ x: 0, y: 0 });
-  const [expandPhase, setExpandPhase] = useState<"idle" | "start" | "growing">("idle");
+  // Dead pixel easter egg — expand-to-fill transition
+  const [expandPhase,  setExpandPhase]  = useState<"idle" | "start" | "growing">("idle");
   const [expandOrigin, setExpandOrigin] = useState({ x: 0, y: 0 });
-  const jumpTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const handleCRTDone = useCallback(() => setCRTDone(true), []);
 
@@ -136,7 +134,6 @@ export default function Home() {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setExpandOrigin({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
     setExpandPhase("start");
-    clearTimeout(jumpTimerRef.current); // stop jumping
   }, [expandPhase]);
 
   // Smoke hue shift — breathes between crimson and dark burgundy every 12s
@@ -148,25 +145,6 @@ export default function Home() {
       setSmokeHue(hues[i]);
     }, 12000);
     return () => clearInterval(id);
-  }, []);
-
-  // Grid-snap movement — teleports to random 80px-grid position every 3-8s
-  useEffect(() => {
-    const GRID = 80;
-    const snap = () => {
-      const cols = Math.max(2, Math.floor((window.innerWidth  - 60) / GRID));
-      const rows = Math.max(2, Math.floor((window.innerHeight - 50) / GRID));
-      setPixelPos({
-        x: Math.floor(Math.random() * cols) * GRID,
-        y: Math.floor(Math.random() * rows) * GRID,
-      });
-    };
-    snap();
-    const schedule = () => {
-      jumpTimerRef.current = setTimeout(() => { snap(); schedule(); }, 3000 + Math.random() * 5000);
-    };
-    schedule();
-    return () => clearTimeout(jumpTimerRef.current);
   }, []);
 
   // Expand phase 1→2: one double-rAF so the start circle renders before transition kicks in
@@ -408,22 +386,23 @@ export default function Home() {
         </section>
       </div>
 
-      {/* ── Dead pixel easter egg — grid-snap, click to expand → /game ── */}
+      {/* ── Dead pixel easter egg — fixed, click to expand → /game ── */}
       <div
         onClick={handlePixelClick}
         style={{
           position: "fixed",
-          left: pixelPos.x,
-          top:  pixelPos.y,
+          bottom: 22,
+          right: 22,
           zIndex: 50,
           display: "flex",
           alignItems: "flex-end",
           gap: 5,
-          opacity: expandPhase !== "idle" ? 0 : 0.42,
+          opacity: expandPhase !== "idle" ? 0 : 0.45,
           cursor: "crosshair",
+          transition: "opacity 0.3s",
         }}
         onMouseEnter={e => { if (expandPhase === "idle") (e.currentTarget as HTMLElement).style.opacity = "0.9"; }}
-        onMouseLeave={e => { if (expandPhase === "idle") (e.currentTarget as HTMLElement).style.opacity = "0.42"; }}
+        onMouseLeave={e => { if (expandPhase === "idle") (e.currentTarget as HTMLElement).style.opacity = "0.45"; }}
       >
         {/* Tiny pixel-art TV — eye looking right toward dead pixel */}
         <svg width={32} height={26} viewBox="0 0 32 26" style={{ display: "block", imageRendering: "pixelated" }}>
