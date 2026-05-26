@@ -335,7 +335,7 @@ function drawRandomChannel(ctx: CanvasRenderingContext2D, idx: number, frame: nu
 // ── Platformer escape (channel 2) ────────────────────────────
 const SAND_PX = 4, SAND_X0 = 24, SAND_Y0 = 18, SAND_CW = 36, SAND_CH = 30; // kept for signal catcher
 const PF_X=24, PF_Y=18, PF_W=144, PF_H=120;
-const PF_GRAVITY=0.16, PF_SPD=1.1, PF_JUMP_VEL=-3.8, PF_BOUNCE=-5.2;
+const PF_GRAVITY=0.05, PF_SPD=0.33, PF_JUMP_VEL=-1.14, PF_BOUNCE=-1.56;
 const PF_PW=10, PF_PH=10;
 
 interface PfLevel {
@@ -351,8 +351,8 @@ interface PfLevel {
 
 const PF_LEVELS: PfLevel[] = [
   // LV1 — floor rises, zigzag climb to top-right
-  { reward:10, eyeSpeed:0.5, eyeX:110, eyeY:50, goalX:118, goalY:8,
-    wallDir:"floor", wallSpeed:0.20, wallStart:148,
+  { reward:10, eyeSpeed:0.15, eyeX:110, eyeY:50, goalX:118, goalY:8,
+    wallDir:"floor", wallSpeed:0.06, wallStart:148,
     platforms:[
       {x:0,  y:110, w:55}, // start bottom-left
       {x:68, y:95,  w:52}, // right
@@ -365,8 +365,8 @@ const PF_LEVELS: PfLevel[] = [
     ],
     mushrooms:[] },
   // LV2 — left wall rushes in, climb right
-  { reward:20, eyeSpeed:0.65, eyeX:100, eyeY:60, goalX:126, goalY:6,
-    wallDir:"left", wallSpeed:0.32, wallStart:-22,
+  { reward:20, eyeSpeed:0.20, eyeX:100, eyeY:60, goalX:126, goalY:6,
+    wallDir:"left", wallSpeed:0.10, wallStart:-22,
     platforms:[
       {x:2,  y:110, w:46}, // start — wall will eat this
       {x:58, y:98,  w:46}, // right
@@ -380,8 +380,8 @@ const PF_LEVELS: PfLevel[] = [
     ],
     mushrooms:[{x:36,y:93}] },
   // LV3 — ceiling drops, descend to bottom-left
-  { reward:30, eyeSpeed:0.8, eyeX:20, eyeY:50, goalX:4, goalY:100,
-    wallDir:"ceiling", wallSpeed:0.28, wallStart:-22,
+  { reward:30, eyeSpeed:0.24, eyeX:20, eyeY:50, goalX:4, goalY:100,
+    wallDir:"ceiling", wallSpeed:0.08, wallStart:-22,
     platforms:[
       {x:94, y:10,  w:50}, // start top-right
       {x:30, y:24,  w:48}, // left
@@ -394,8 +394,8 @@ const PF_LEVELS: PfLevel[] = [
     ],
     mushrooms:[{x:56,y:33},{x:42,y:75}] },
   // LV4 — right wall closes fast, escape left, complex
-  { reward:50, eyeSpeed:1.0, eyeX:20, eyeY:80, goalX:2, goalY:8,
-    wallDir:"right", wallSpeed:0.50, wallStart:170,
+  { reward:50, eyeSpeed:0.30, eyeX:20, eyeY:80, goalX:2, goalY:8,
+    wallDir:"right", wallSpeed:0.15, wallStart:170,
     platforms:[
       {x:94, y:110, w:50}, // start bottom-right
       {x:40, y:98,  w:46}, // left
@@ -611,7 +611,7 @@ function updateCatcher(
   dots: CatchDot[], paddleX: {current:number}, targetX: {current:number|null},
   W: number, H: number, f: number, onCatch: ()=>void
 ) {
-  if (f%22===0) dots.push({x:1+Math.floor(Math.random()*(W-2)), y:0, vy:0.22+Math.random()*0.28});
+  if (f%22===0) dots.push({x:1+Math.floor(Math.random()*(W-2)), y:0, vy:0.07+Math.random()*0.08});
   if (targetX.current!==null) {
     const t=Math.max(0,Math.min(W-4,targetX.current));
     paddleX.current += (t-paddleX.current)*0.22;
