@@ -335,7 +335,7 @@ function drawRandomChannel(ctx: CanvasRenderingContext2D, idx: number, frame: nu
 // ── Platformer escape (channel 2) ────────────────────────────
 const SAND_PX = 4, SAND_X0 = 24, SAND_Y0 = 18, SAND_CW = 36, SAND_CH = 30; // kept for signal catcher
 const PF_X=24, PF_Y=18, PF_W=144, PF_H=120;
-const PF_GRAVITY=0.35, PF_SPD=1.8, PF_JUMP_VEL=-5.8, PF_BOUNCE=-8.5;
+const PF_GRAVITY=0.16, PF_SPD=1.1, PF_JUMP_VEL=-3.8, PF_BOUNCE=-5.2;
 const PF_PW=10, PF_PH=10;
 
 interface PfLevel {
@@ -344,35 +344,85 @@ interface PfLevel {
   goalX:number; goalY:number;
   eyeSpeed:number; eyeX:number; eyeY:number;
   reward:number;
+  wallDir: "floor"|"ceiling"|"left"|"right";
+  wallSpeed: number;
+  wallStart: number;
 }
 
 const PF_LEVELS: PfLevel[] = [
-  { reward:10, eyeSpeed:0.45, eyeX:110, eyeY:100, goalX:72, goalY:14,
-    platforms:[{x:0,y:112,w:144},{x:22,y:88,w:40},{x:85,y:70,w:38},{x:42,y:52,w:52}],
+  // LV1 — floor rises, zigzag climb to top-right
+  { reward:10, eyeSpeed:0.5, eyeX:110, eyeY:50, goalX:118, goalY:8,
+    wallDir:"floor", wallSpeed:0.20, wallStart:148,
+    platforms:[
+      {x:0,  y:110, w:55}, // start bottom-left
+      {x:68, y:95,  w:52}, // right
+      {x:4,  y:80,  w:52}, // left
+      {x:70, y:65,  w:52}, // right
+      {x:4,  y:50,  w:52}, // left
+      {x:70, y:35,  w:52}, // right
+      {x:10, y:20,  w:52}, // left
+      {x:82, y:8,   w:55}, // right — goal here
+    ],
     mushrooms:[] },
-  { reward:20, eyeSpeed:0.7, eyeX:72, eyeY:104, goalX:72, goalY:12,
-    platforms:[{x:0,y:112,w:58},{x:86,y:112,w:58},{x:58,y:92,w:28},{x:8,y:74,w:35},{x:100,y:74,w:36},{x:45,y:54,w:48}],
-    mushrooms:[{x:72,y:87}] },
-  { reward:30, eyeSpeed:1.05, eyeX:20, eyeY:106, goalX:122, goalY:10,
-    platforms:[{x:0,y:112,w:38},{x:50,y:112,w:38},{x:100,y:112,w:44},{x:18,y:94,w:28},
-      {x:72,y:88,w:32},{x:118,y:76,w:26},{x:8,y:62,w:30},{x:55,y:56,w:36},{x:105,y:46,w:38},{x:30,y:36,w:24}],
-    mushrooms:[{x:95,y:57},{x:52,y:41}] },
-  { reward:50, eyeSpeed:1.45, eyeX:72, eyeY:108, goalX:14, goalY:8,
-    platforms:[{x:0,y:112,w:28},{x:36,y:112,w:22},{x:68,y:112,w:22},{x:100,y:112,w:22},{x:130,y:112,w:14},
-      {x:118,y:96,w:20},{x:88,y:82,w:22},{x:60,y:70,w:20},{x:30,y:60,w:22},{x:6,y:48,w:22},
-      {x:40,y:38,w:20},{x:72,y:28,w:20},{x:100,y:18,w:20},{x:120,y:8,w:24},{x:0,y:8,w:20}],
-    mushrooms:[{x:44,y:27},{x:76,y:103},{x:106,y:7}] },
+  // LV2 — left wall rushes in, climb right
+  { reward:20, eyeSpeed:0.65, eyeX:100, eyeY:60, goalX:126, goalY:6,
+    wallDir:"left", wallSpeed:0.32, wallStart:-22,
+    platforms:[
+      {x:2,  y:110, w:46}, // start — wall will eat this
+      {x:58, y:98,  w:46}, // right
+      {x:8,  y:86,  w:46}, // left — danger soon
+      {x:66, y:74,  w:46}, // right
+      {x:14, y:62,  w:46}, // left — very dangerous
+      {x:72, y:50,  w:46}, // right
+      {x:18, y:38,  w:44}, // left — barely safe
+      {x:76, y:26,  w:46}, // right
+      {x:90, y:14,  w:50}, // right — goal
+    ],
+    mushrooms:[{x:36,y:93}] },
+  // LV3 — ceiling drops, descend to bottom-left
+  { reward:30, eyeSpeed:0.8, eyeX:20, eyeY:50, goalX:4, goalY:100,
+    wallDir:"ceiling", wallSpeed:0.28, wallStart:-22,
+    platforms:[
+      {x:94, y:10,  w:50}, // start top-right
+      {x:30, y:24,  w:48}, // left
+      {x:86, y:38,  w:48}, // right
+      {x:16, y:52,  w:48}, // left
+      {x:78, y:66,  w:48}, // right
+      {x:10, y:80,  w:48}, // left
+      {x:72, y:94,  w:48}, // right
+      {x:0,  y:108, w:44}, // left — goal
+    ],
+    mushrooms:[{x:56,y:33},{x:42,y:75}] },
+  // LV4 — right wall closes fast, escape left, complex
+  { reward:50, eyeSpeed:1.0, eyeX:20, eyeY:80, goalX:2, goalY:8,
+    wallDir:"right", wallSpeed:0.50, wallStart:170,
+    platforms:[
+      {x:94, y:110, w:50}, // start bottom-right
+      {x:40, y:98,  w:46}, // left
+      {x:88, y:85,  w:46}, // right — wall closing
+      {x:28, y:72,  w:46}, // left
+      {x:82, y:59,  w:46}, // right — risky
+      {x:16, y:46,  w:46}, // left
+      {x:78, y:33,  w:46}, // right — very risky
+      {x:8,  y:20,  w:46}, // left
+      {x:62, y:8,   w:44}, // right
+      {x:0,  y:8,   w:40}, // far left — goal
+    ],
+    mushrooms:[{x:52,y:80},{x:90,y:54},{x:38,y:28}] },
 ];
 
 type PfResult = "ok" | "win" | "die";
 
 function pfUpdate(
   player: {x:number;y:number;vx:number;vy:number;onGround:boolean},
-  eye: {x:number;y:number;vx:number;vy:number},
+  eye: {x:number;y:number;vx:number;vy:number;onGround:boolean},
   keys: {left:boolean;right:boolean;jump:boolean},
   jumpConsumed: {current:boolean},
-  level: PfLevel
+  level: PfLevel,
+  wallPos: number,
+  f: number
 ): PfResult {
+  // ── Player movement ────────────────────────────────────────
   player.vx = keys.left ? -PF_SPD : keys.right ? PF_SPD : 0;
   if (keys.jump && player.onGround && !jumpConsumed.current) {
     player.vy = PF_JUMP_VEL; player.onGround = false; jumpConsumed.current = true;
@@ -384,9 +434,9 @@ function pfUpdate(
   if (player.x + PF_PW > PF_W) player.x = PF_W - PF_PW;
   player.onGround = false;
   for (const p of level.platforms) {
-    if (player.x + PF_PW > p.x && player.x < p.x + p.w) {
-      const prevBottom = player.y + PF_PH - player.vy;
-      if (prevBottom <= p.y + 1 && player.y + PF_PH >= p.y) {
+    if (player.x+PF_PW > p.x && player.x < p.x+p.w) {
+      const prevBot = player.y + PF_PH - player.vy;
+      if (prevBot <= p.y+1 && player.y+PF_PH >= p.y) {
         player.y = p.y - PF_PH; player.vy = 0; player.onGround = true;
       }
     }
@@ -396,17 +446,43 @@ function pfUpdate(
       player.vy = PF_BOUNCE; player.y = m.y - PF_PH; player.onGround = false;
     }
   }
+
+  // ── Wall kill ──────────────────────────────────────────────
+  if (level.wallDir==="floor"   && player.y + PF_PH >= wallPos) return "die";
+  if (level.wallDir==="ceiling" && player.y <= wallPos)          return "die";
+  if (level.wallDir==="left"    && player.x <= wallPos)          return "die";
+  if (level.wallDir==="right"   && player.x + PF_PW >= wallPos)  return "die";
   if (player.y > PF_H + 20) return "die";
-  if (Math.abs((player.x+PF_PW/2) - (level.goalX+4)) < 12 && Math.abs((player.y+PF_PH/2) - (level.goalY+4)) < 12) return "win";
-  eye.x += eye.vx;
-  if (eye.x < 0 || eye.x > PF_W-10) { eye.vx *= -1; eye.x = Math.max(0, Math.min(PF_W-10, eye.x)); }
-  const eyeTargetY = player.y + Math.sin(Date.now()*0.0008)*18;
-  eye.vy += (eyeTargetY - eye.y) * 0.018; eye.vy *= 0.88;
-  eye.y += eye.vy;
-  if (eye.y < 0) { eye.y=0; eye.vy=Math.abs(eye.vy)*0.5; }
-  if (eye.y > PF_H-10) { eye.y=PF_H-10; eye.vy=-Math.abs(eye.vy)*0.5; }
-  const ex=eye.x+5, ey=eye.y+4, px2=player.x+PF_PW/2, py2=player.y+PF_PH/2;
-  if (Math.abs(ex-px2)<8 && Math.abs(ey-py2)<8) return "die";
+
+  // ── Goal ───────────────────────────────────────────────────
+  if (Math.abs((player.x+PF_PW/2)-(level.goalX+4))<12 && Math.abs((player.y+PF_PH/2)-(level.goalY+4))<12) return "win";
+
+  // ── Eye enemy — gravity + platform collision + jump ────────
+  eye.vy += PF_GRAVITY;
+  // Track player horizontally
+  const pdx = (player.x+5) - (eye.x+5);
+  eye.vx += pdx * 0.012;
+  eye.vx = Math.max(-level.eyeSpeed*1.6, Math.min(level.eyeSpeed*1.6, eye.vx));
+  eye.x += eye.vx; eye.y += eye.vy;
+  if (eye.x < 0) { eye.x=0; eye.vx=Math.abs(eye.vx)*0.6; }
+  if (eye.x+10 > PF_W) { eye.x=PF_W-10; eye.vx=-Math.abs(eye.vx)*0.6; }
+  eye.onGround = false;
+  for (const p of level.platforms) {
+    if (eye.x+10 > p.x && eye.x < p.x+p.w) {
+      const prevBot = eye.y + 10 - eye.vy;
+      if (prevBot <= p.y+1 && eye.y+10 >= p.y) {
+        eye.y = p.y-10; eye.vy = 0; eye.onGround = true;
+      }
+    }
+  }
+  // Jump when on ground and player is above, or periodically
+  if (eye.onGround && (player.y < eye.y - 12 || f % 95 === 0)) {
+    eye.vy = PF_JUMP_VEL * 0.92;
+  }
+  if (eye.y > PF_H+20) { eye.y = -10; eye.vy = 0; } // respawn top if falls off
+
+  // ── Eye collision with player ──────────────────────────────
+  if (Math.abs((eye.x+5)-(player.x+5))<9 && Math.abs((eye.y+5)-(player.y+5))<9) return "die";
   return "ok";
 }
 
@@ -417,16 +493,37 @@ function pfDraw(
   level: PfLevel,
   phase: "playing"|"dead"|"win",
   levelIdx: number,
-  f: number
+  f: number,
+  wallPos: number
 ) {
   const ox=PF_X, oy=PF_Y;
-  // Sky gradient — dark navy, clearly different from TV bezel
   ctx.fillStyle="#001428"; ctx.fillRect(ox,oy,PF_W,PF_H);
   // Stars
   ctx.fillStyle="#2a4870";
   for(let i=0;i<24;i++) ctx.fillRect(ox+((i*47)%PF_W), oy+((i*29)%60), 1, 1);
   ctx.fillStyle="#3a6090";
   for(let i=0;i<10;i++) ctx.fillRect(ox+((i*83+11)%PF_W), oy+((i*41+7)%55), 2, 2);
+
+  // ── Closing wall (doom zone) ──────────────────────────────
+  const wp = Math.round(wallPos);
+  const pulse = 0.75 + Math.sin(f * 0.18) * 0.25;
+  ctx.globalAlpha = 0.82 * pulse;
+  ctx.fillStyle = "#6b0000";
+  switch (level.wallDir) {
+    case "floor":   ctx.fillRect(ox,     oy+wp,   PF_W,       PF_H-wp+4); break;
+    case "ceiling": ctx.fillRect(ox,     oy,      PF_W,       wp);        break;
+    case "left":    ctx.fillRect(ox,     oy,      wp,         PF_H);      break;
+    case "right":   ctx.fillRect(ox+wp,  oy,      PF_W-wp+4,  PF_H);      break;
+  }
+  ctx.globalAlpha = 1;
+  // Bright danger edge
+  ctx.fillStyle = "#ff3300";
+  switch (level.wallDir) {
+    case "floor":   ctx.fillRect(ox,    oy+wp-2, PF_W, 3); break;
+    case "ceiling": ctx.fillRect(ox,    oy+wp,   PF_W, 3); break;
+    case "left":    ctx.fillRect(ox+wp, oy,      3,    PF_H); break;
+    case "right":   ctx.fillRect(ox+wp-2, oy,    3,    PF_H); break;
+  }
 
   // Platforms — bright teal, impossible to miss
   for (const p of level.platforms) {
@@ -852,7 +949,8 @@ export function EyeTV() {
   const platDeadTimer = useRef(0);
   const platWinTimer  = useRef(0);
   const playerPlatRef = useRef({ x: 20.0, y: 100.0, vx: 0.0, vy: 0.0, onGround: false });
-  const eyeEnemyRef   = useRef({ x: 110.0, y: 100.0, vx: 0.4, vy: 0.1 });
+  const eyeEnemyRef   = useRef({ x: 110.0, y: 100.0, vx: 0.4, vy: 0.1, onGround: false });
+  const wallPosRef    = useRef(148);
 
   const [phase, setPhase] = useState<"pick" | "play">("pick");
   const [hype, setHype] = useState(0);
@@ -909,10 +1007,10 @@ export function EyeTV() {
     platPhaseRef.current = "playing";
     platDeadTimer.current = 0;
     platWinTimer.current = 0;
-    // Start player on first platform
-    const floor = lv.platforms.find(p => p.y >= 100) ?? lv.platforms[0];
-    playerPlatRef.current = { x: floor.x + 4, y: floor.y - PF_PH - 1, vx: 0, vy: 0, onGround: true };
-    eyeEnemyRef.current = { x: lv.eyeX, y: lv.eyeY, vx: lv.eyeSpeed, vy: 0.1 };
+    const startPlat = lv.platforms[0];
+    playerPlatRef.current = { x: startPlat.x + 4, y: startPlat.y - PF_PH - 1, vx: 0, vy: 0, onGround: true };
+    eyeEnemyRef.current = { x: lv.eyeX, y: lv.eyeY, vx: lv.eyeSpeed, vy: 0.1, onGround: false };
+    wallPosRef.current = lv.wallStart;
     keysRef.current = { left: false, right: false, jump: false };
     jumpConsumed.current = false;
   }, []);
@@ -1050,12 +1148,18 @@ export function EyeTV() {
       if (ch === 2) {
         // ── Platformer Escape ─────────────────────────────
         const platPh = platPhaseRef.current;
+        const lv = PF_LEVELS[platLevelRef.current];
         if (platPh === "playing") {
-          const res = pfUpdate(playerPlatRef.current, eyeEnemyRef.current, keysRef.current, jumpConsumed, PF_LEVELS[platLevelRef.current]);
+          // Advance wall
+          if (lv.wallDir==="floor")   wallPosRef.current -= lv.wallSpeed;
+          else if (lv.wallDir==="ceiling") wallPosRef.current += lv.wallSpeed;
+          else if (lv.wallDir==="left")    wallPosRef.current += lv.wallSpeed;
+          else                             wallPosRef.current -= lv.wallSpeed;
+          const res = pfUpdate(playerPlatRef.current, eyeEnemyRef.current, keysRef.current, jumpConsumed, lv, wallPosRef.current, f);
           if (res === "die") { platPhaseRef.current = "dead"; platDeadTimer.current = 90; }
           else if (res === "win") {
             platPhaseRef.current = "win"; platWinTimer.current = 90;
-            const reward = PF_LEVELS[platLevelRef.current].reward;
+            const reward = lv.reward;
             pendingRef.current += reward; hypeRef.current += reward;
             setHype(h => h + reward); setMyScore(s => s + reward);
             MILESTONES.forEach((m, mi) => { if (hypeRef.current >= m) passedRef.current.add(mi); });
@@ -1070,7 +1174,7 @@ export function EyeTV() {
             initPlatLevel(next);
           }
         }
-        pfDraw(ctx, playerPlatRef.current, eyeEnemyRef.current, PF_LEVELS[platLevelRef.current], platPh, platLevelRef.current, f);
+        pfDraw(ctx, playerPlatRef.current, eyeEnemyRef.current, lv, platPh, platLevelRef.current, f, wallPosRef.current);
 
       } else if (ch === 3) {
         // ── Signal Catcher ────────────────────────────────
