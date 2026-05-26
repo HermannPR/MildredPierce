@@ -335,7 +335,7 @@ function drawRandomChannel(ctx: CanvasRenderingContext2D, idx: number, frame: nu
 // ── Platformer escape (channel 2) ────────────────────────────
 const SAND_PX = 4, SAND_X0 = 24, SAND_Y0 = 18, SAND_CW = 36, SAND_CH = 30; // kept for signal catcher
 const PF_X=24, PF_Y=18, PF_W=144, PF_H=120;
-const PF_GRAVITY=0.05, PF_SPD=0.33, PF_JUMP_VEL=-1.14, PF_BOUNCE=-1.56;
+const PF_GRAVITY=0.05, PF_SPD=0.33, PF_JUMP_VEL=-1.8, PF_BOUNCE=-2.4;
 const PF_PW=10, PF_PH=10;
 
 interface PfLevel {
@@ -350,65 +350,118 @@ interface PfLevel {
 }
 
 const PF_LEVELS: PfLevel[] = [
-  // LV1 — floor rises, zigzag climb to top-right
-  { reward:10, eyeSpeed:0.15, eyeX:110, eyeY:50, goalX:118, goalY:8,
-    wallDir:"floor", wallSpeed:0.06, wallStart:148,
+  // LV1 — floor rises slow, gentle zigzag tutorial
+  { reward:10, eyeSpeed:0.14, eyeX:110, eyeY:90, goalX:116, goalY:6,
+    wallDir:"floor", wallSpeed:0.04, wallStart:148,
     platforms:[
-      {x:0,  y:110, w:55}, // start bottom-left
-      {x:68, y:95,  w:52}, // right
-      {x:4,  y:80,  w:52}, // left
-      {x:70, y:65,  w:52}, // right
-      {x:4,  y:50,  w:52}, // left
-      {x:70, y:35,  w:52}, // right
-      {x:10, y:20,  w:52}, // left
-      {x:82, y:8,   w:55}, // right — goal here
+      {x:0,   y:108, w:62}, // start, wide
+      {x:66,  y:92,  w:62}, // right +16
+      {x:6,   y:76,  w:58}, // left  +16
+      {x:70,  y:60,  w:58}, // right +16
+      {x:4,   y:44,  w:58}, // left  +16
+      {x:72,  y:28,  w:58}, // right +16
+      {x:8,   y:14,  w:52}, // left  +14
+      {x:80,  y:6,   w:58}, // right top — goal
     ],
     mushrooms:[] },
-  // LV2 — left wall rushes in, climb right
-  { reward:20, eyeSpeed:0.20, eyeX:100, eyeY:60, goalX:126, goalY:6,
-    wallDir:"left", wallSpeed:0.10, wallStart:-22,
+  // LV2 — left wall rushes, climb right and up
+  { reward:20, eyeSpeed:0.20, eyeX:100, eyeY:70, goalX:116, goalY:6,
+    wallDir:"left", wallSpeed:0.08, wallStart:-22,
     platforms:[
-      {x:2,  y:110, w:46}, // start — wall will eat this
-      {x:58, y:98,  w:46}, // right
-      {x:8,  y:86,  w:46}, // left — danger soon
-      {x:66, y:74,  w:46}, // right
-      {x:14, y:62,  w:46}, // left — very dangerous
-      {x:72, y:50,  w:46}, // right
-      {x:18, y:38,  w:44}, // left — barely safe
-      {x:76, y:26,  w:46}, // right
-      {x:90, y:14,  w:50}, // right — goal
+      {x:2,   y:108, w:52}, // start left (wall eats soon)
+      {x:60,  y:94,  w:54}, // right safe
+      {x:10,  y:80,  w:48}, // left (danger grows)
+      {x:64,  y:66,  w:54}, // right
+      {x:18,  y:52,  w:46}, // left risky
+      {x:68,  y:38,  w:54}, // right
+      {x:82,  y:24,  w:56}, // right high
+      {x:90,  y:10,  w:50}, // right top — goal
     ],
-    mushrooms:[{x:36,y:93}] },
+    mushrooms:[{x:34,y:100}] },
   // LV3 — ceiling drops, descend to bottom-left
-  { reward:30, eyeSpeed:0.24, eyeX:20, eyeY:50, goalX:4, goalY:100,
-    wallDir:"ceiling", wallSpeed:0.08, wallStart:-22,
+  { reward:30, eyeSpeed:0.22, eyeX:20, eyeY:60, goalX:4, goalY:100,
+    wallDir:"ceiling", wallSpeed:0.06, wallStart:-22,
     platforms:[
-      {x:94, y:10,  w:50}, // start top-right
-      {x:30, y:24,  w:48}, // left
-      {x:86, y:38,  w:48}, // right
-      {x:16, y:52,  w:48}, // left
-      {x:78, y:66,  w:48}, // right
-      {x:10, y:80,  w:48}, // left
-      {x:72, y:94,  w:48}, // right
-      {x:0,  y:108, w:44}, // left — goal
+      {x:88,  y:10,  w:54}, // start top-right
+      {x:22,  y:26,  w:52}, // left  +16
+      {x:80,  y:42,  w:52}, // right +16
+      {x:10,  y:58,  w:52}, // left  +16
+      {x:72,  y:74,  w:52}, // right +16
+      {x:4,   y:90,  w:52}, // left  +16 — goal
     ],
-    mushrooms:[{x:56,y:33},{x:42,y:75}] },
-  // LV4 — right wall closes fast, escape left, complex
-  { reward:50, eyeSpeed:0.30, eyeX:20, eyeY:80, goalX:2, goalY:8,
-    wallDir:"right", wallSpeed:0.15, wallStart:170,
+    mushrooms:[{x:48,y:20},{x:36,y:68}] },
+  // LV4 — right wall closes, escape left
+  { reward:40, eyeSpeed:0.26, eyeX:24, eyeY:90, goalX:2, goalY:10,
+    wallDir:"right", wallSpeed:0.10, wallStart:170,
     platforms:[
-      {x:94, y:110, w:50}, // start bottom-right
-      {x:40, y:98,  w:46}, // left
-      {x:88, y:85,  w:46}, // right — wall closing
-      {x:28, y:72,  w:46}, // left
-      {x:82, y:59,  w:46}, // right — risky
-      {x:16, y:46,  w:46}, // left
-      {x:78, y:33,  w:46}, // right — very risky
-      {x:8,  y:20,  w:46}, // left
-      {x:62, y:8,   w:44}, // right
-      {x:0,  y:8,   w:40}, // far left — goal
+      {x:90,  y:108, w:54}, // start bottom-right
+      {x:32,  y:94,  w:48}, // center
+      {x:86,  y:80,  w:48}, // right (wall closing)
+      {x:22,  y:66,  w:48}, // left safe
+      {x:80,  y:52,  w:46}, // right risky
+      {x:10,  y:38,  w:50}, // left safe
+      {x:72,  y:24,  w:46}, // right risky
+      {x:2,   y:10,  w:48}, // far left — goal
     ],
-    mushrooms:[{x:52,y:80},{x:90,y:54},{x:38,y:28}] },
+    mushrooms:[{x:54,y:90},{x:44,y:62}] },
+  // LV5 — floor rises, mushroom maze with branching paths
+  { reward:50, eyeSpeed:0.24, eyeX:80, eyeY:50, goalX:48, goalY:12,
+    wallDir:"floor", wallSpeed:0.05, wallStart:148,
+    platforms:[
+      {x:2,   y:108, w:42}, // start left
+      {x:56,  y:108, w:42}, // right ground
+      {x:100, y:108, w:44}, // far right ground
+      {x:16,  y:90,  w:36}, // left mid
+      {x:74,  y:88,  w:38}, // right mid
+      {x:38,  y:70,  w:38}, // center
+      {x:90,  y:66,  w:40}, // right upper
+      {x:6,   y:48,  w:38}, // left upper
+      {x:62,  y:42,  w:40}, // center upper
+      {x:98,  y:26,  w:42}, // top right
+      {x:28,  y:16,  w:46}, // top left — goal
+    ],
+    mushrooms:[{x:50,y:102},{x:110,y:102},{x:80,y:82},{x:18,y:60}] },
+  // LV6 — ceiling drops fast, compact vertical escape
+  { reward:60, eyeSpeed:0.28, eyeX:10, eyeY:60, goalX:10, goalY:96,
+    wallDir:"ceiling", wallSpeed:0.10, wallStart:-22,
+    platforms:[
+      {x:78,  y:14,  w:60}, // start top-right
+      {x:10,  y:30,  w:56}, // left
+      {x:72,  y:48,  w:56}, // right
+      {x:6,   y:66,  w:56}, // left
+      {x:66,  y:84,  w:56}, // right
+      {x:2,   y:102, w:50}, // far left bottom — goal
+    ],
+    mushrooms:[{x:44,y:44},{x:36,y:80}] },
+  // LV7 — left wall fast, narrow platforms, push right
+  { reward:75, eyeSpeed:0.32, eyeX:50, eyeY:80, goalX:112, goalY:4,
+    wallDir:"left", wallSpeed:0.12, wallStart:-22,
+    platforms:[
+      {x:4,   y:108, w:36}, // start left (eaten fast)
+      {x:50,  y:96,  w:34}, // center
+      {x:96,  y:82,  w:44}, // right safe
+      {x:58,  y:68,  w:34}, // center
+      {x:100, y:54,  w:42}, // right safe
+      {x:66,  y:40,  w:34}, // center
+      {x:102, y:26,  w:40}, // right safe
+      {x:76,  y:12,  w:62}, // right top — goal
+    ],
+    mushrooms:[{x:22,y:100},{x:80,y:62}] },
+  // LV8 — right wall ultra fast, complex maze escape
+  { reward:100, eyeSpeed:0.38, eyeX:20, eyeY:90, goalX:2, goalY:4,
+    wallDir:"right", wallSpeed:0.18, wallStart:170,
+    platforms:[
+      {x:92,  y:108, w:48}, // start
+      {x:30,  y:94,  w:40},
+      {x:80,  y:80,  w:40},
+      {x:16,  y:66,  w:40},
+      {x:68,  y:52,  w:38},
+      {x:4,   y:38,  w:42},
+      {x:56,  y:24,  w:38},
+      {x:0,   y:12,  w:36}, // far left — goal
+      {x:44,  y:10,  w:40}, // extra platform for approach
+    ],
+    mushrooms:[{x:52,y:88},{x:86,y:74},{x:28,y:60},{x:62,y:46}] },
 ];
 
 type PfResult = "ok" | "win" | "die";
@@ -424,10 +477,10 @@ function pfUpdate(
 ): PfResult {
   // ── Player movement ────────────────────────────────────────
   player.vx = keys.left ? -PF_SPD : keys.right ? PF_SPD : 0;
+  if (player.onGround) jumpConsumed.current = false;
   if (keys.jump && player.onGround && !jumpConsumed.current) {
     player.vy = PF_JUMP_VEL; player.onGround = false; jumpConsumed.current = true;
   }
-  if (!keys.jump) jumpConsumed.current = false;
   player.vy += PF_GRAVITY;
   player.x += player.vx; player.y += player.vy;
   if (player.x < 0) player.x = 0;
@@ -461,17 +514,17 @@ function pfUpdate(
   eye.vy += PF_GRAVITY;
   // Track player horizontally
   const pdx = (player.x+5) - (eye.x+5);
-  eye.vx += pdx * 0.012;
-  eye.vx = Math.max(-level.eyeSpeed*1.6, Math.min(level.eyeSpeed*1.6, eye.vx));
+  eye.vx += pdx * 0.005;
+  eye.vx = Math.max(-level.eyeSpeed, Math.min(level.eyeSpeed, eye.vx));
   eye.x += eye.vx; eye.y += eye.vy;
   if (eye.x < 0) { eye.x=0; eye.vx=Math.abs(eye.vx)*0.6; }
-  if (eye.x+10 > PF_W) { eye.x=PF_W-10; eye.vx=-Math.abs(eye.vx)*0.6; }
+  if (eye.x+7 > PF_W) { eye.x=PF_W-7; eye.vx=-Math.abs(eye.vx)*0.6; }
   eye.onGround = false;
   for (const p of level.platforms) {
-    if (eye.x+10 > p.x && eye.x < p.x+p.w) {
-      const prevBot = eye.y + 10 - eye.vy;
-      if (prevBot <= p.y+1 && eye.y+10 >= p.y) {
-        eye.y = p.y-10; eye.vy = 0; eye.onGround = true;
+    if (eye.x+7 > p.x && eye.x < p.x+p.w) {
+      const prevBot = eye.y + 7 - eye.vy;
+      if (prevBot <= p.y+1 && eye.y+7 >= p.y) {
+        eye.y = p.y-7; eye.vy = 0; eye.onGround = true;
       }
     }
   }
@@ -482,7 +535,7 @@ function pfUpdate(
   if (eye.y > PF_H+20) { eye.y = -10; eye.vy = 0; } // respawn top if falls off
 
   // ── Eye collision with player ──────────────────────────────
-  if (Math.abs((eye.x+5)-(player.x+5))<9 && Math.abs((eye.y+5)-(player.y+5))<9) return "die";
+  if (Math.abs((eye.x+3.5)-(player.x+5))<7 && Math.abs((eye.y+3.5)-(player.y+5))<7) return "die";
   return "ok";
 }
 
@@ -497,6 +550,7 @@ function pfDraw(
   wallPos: number
 ) {
   const ox=PF_X, oy=PF_Y;
+  ctx.save(); ctx.beginPath(); ctx.rect(ox, oy, PF_W, PF_H); ctx.clip();
   ctx.fillStyle="#001428"; ctx.fillRect(ox,oy,PF_W,PF_H);
   // Stars
   ctx.fillStyle="#2a4870";
@@ -559,18 +613,18 @@ function pfDraw(
   ctx.fillText("▲",ox+level.goalX+4, oy+level.goalY-2);
   ctx.globalAlpha=1;
 
-  // Eye enemy — big bright red
+  // Eye enemy — smaller red
   const ex=Math.round(eye.x), ey2=Math.round(eye.y);
   const ep=0.7+Math.sin(f*0.1)*0.3;
   ctx.globalAlpha=ep*0.4; ctx.fillStyle="#ff0020";
-  ctx.fillRect(ox+ex-3, oy+ey2-3, 16, 14);
+  ctx.fillRect(ox+ex-2, oy+ey2-2, 11, 11);
   ctx.globalAlpha=1;
-  ctx.fillStyle="#cc0010"; ctx.fillRect(ox+ex, oy+ey2, 10, 10);
-  ctx.fillStyle="#ff2030"; ctx.fillRect(ox+ex+1, oy+ey2+1, 8, 8);
-  ctx.fillStyle="#ff8090"; ctx.fillRect(ox+ex+2, oy+ey2+2, 4, 4);
+  ctx.fillStyle="#cc0010"; ctx.fillRect(ox+ex, oy+ey2, 7, 7);
+  ctx.fillStyle="#ff2030"; ctx.fillRect(ox+ex+1, oy+ey2+1, 5, 5);
+  ctx.fillStyle="#ff8090"; ctx.fillRect(ox+ex+2, oy+ey2+2, 3, 3);
   const pd=eye.vx>0?1:0;
-  ctx.fillStyle="#110008"; ctx.fillRect(ox+ex+3+pd, oy+ey2+3, 3, 4);
-  ctx.fillStyle="#ffffff"; ctx.fillRect(ox+ex+3+pd, oy+ey2+3, 1, 1);
+  ctx.fillStyle="#110008"; ctx.fillRect(ox+ex+2+pd, oy+ey2+2, 2, 3);
+  ctx.fillStyle="#ffffff"; ctx.fillRect(ox+ex+2+pd, oy+ey2+2, 1, 1);
 
   // Player — bright yellow, 10×10
   const pa=Math.round(player.x), pb=Math.round(player.y);
@@ -599,8 +653,9 @@ function pfDraw(
     ctx.fillStyle="#00ff88"; ctx.font="bold 8px monospace"; ctx.textAlign="center";
     ctx.fillText(`+${PF_LEVELS[levelIdx].reward} HYPE`,ox+72,oy+56);
     ctx.fillStyle="#aaffcc"; ctx.font="6px monospace";
-    ctx.fillText(levelIdx<3?"TAP FOR NEXT":"ALL CLEAR",ox+72,oy+70);
+    ctx.fillText(levelIdx<7?"TAP FOR NEXT":"ALL CLEAR",ox+72,oy+70);
   }
+  ctx.restore();
 }
 
 
@@ -627,6 +682,7 @@ function updateCatcher(
 }
 
 function drawCatcher(ctx: CanvasRenderingContext2D, dots: CatchDot[], paddleX: number, score: number, W: number, H: number, f: number) {
+  ctx.save(); ctx.beginPath(); ctx.rect(SAND_X0, SAND_Y0, W*SAND_PX, H*SAND_PX); ctx.clip();
   ctx.fillStyle="#010508"; ctx.fillRect(SAND_X0,SAND_Y0,W*SAND_PX,H*SAND_PX);
   for (const d of dots) {
     const px=SAND_X0+Math.round(d.x)*SAND_PX, py=SAND_Y0+Math.round(d.y)*SAND_PX;
@@ -639,6 +695,7 @@ function drawCatcher(ctx: CanvasRenderingContext2D, dots: CatchDot[], paddleX: n
   ctx.fillStyle="#5ab0e0"; ctx.fillRect(ppx,ppy,4*SAND_PX,2);
   ctx.fillStyle="#1a4a60"; ctx.font="5px monospace"; ctx.textAlign="left";
   ctx.fillText(`${score}`,SAND_X0+2,SAND_Y0+7);
+  ctx.restore();
 }
 
 // ── Signal map ───────────────────────────────────────────────
@@ -1011,7 +1068,6 @@ export function EyeTV() {
     playerPlatRef.current = { x: startPlat.x + 4, y: startPlat.y - PF_PH - 1, vx: 0, vy: 0, onGround: true };
     eyeEnemyRef.current = { x: lv.eyeX, y: lv.eyeY, vx: lv.eyeSpeed, vy: 0.1, onGround: false };
     wallPosRef.current = lv.wallStart;
-    keysRef.current = { left: false, right: false, jump: false };
     jumpConsumed.current = false;
   }, []);
 
