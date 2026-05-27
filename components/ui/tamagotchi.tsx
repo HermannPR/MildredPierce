@@ -698,6 +698,23 @@ function drawCatcher(ctx: CanvasRenderingContext2D, dots: CatchDot[], paddleX: n
   ctx.restore();
 }
 
+function drawNoSignal(ctx: CanvasRenderingContext2D, f: number, label = "NO SIGNAL") {
+  for (let y = PF_Y; y < PF_Y + PF_H; y += 2) {
+    for (let x = PF_X; x < PF_X + PF_W; x += 4) {
+      const v = Math.floor(Math.random() * 90);
+      ctx.fillStyle = `rgb(${v},${v},${v})`;
+      ctx.fillRect(x, y, 4, 2);
+    }
+  }
+  ctx.fillStyle = "rgba(0,0,0,0.4)";
+  for (let y = PF_Y; y < PF_Y + PF_H; y += 2) ctx.fillRect(PF_X, y, PF_W, 1);
+  const a = 0.65 + Math.sin(f * 0.09) * 0.35;
+  ctx.globalAlpha = a;
+  ctx.fillStyle = "#ffffff"; ctx.font = "bold 8px monospace"; ctx.textAlign = "center";
+  ctx.fillText(label, PF_X + PF_W / 2, PF_Y + PF_H / 2 + 3);
+  ctx.globalAlpha = 1;
+}
+
 // ── Signal map ───────────────────────────────────────────────
 // [lat, lon] center of each country (equirectangular projection)
 const COUNTRY_POS: Record<string, [number, number]> = {
@@ -998,6 +1015,18 @@ export function EyeTV() {
   const catchScoreRef = useRef(0);
   const catchTargetX  = useRef<number|null>(null);
 
+  // CH.4 recordings
+  const [ch4Recordings, setCh4Recordings] = useState<{ url: string; name: string }[]>([]);
+  const [ch4Idx, setCh4Idx] = useState(0);
+  const ch4RecRef    = useRef<{ url: string; name: string }[]>([]);
+  const ch4IdxRef    = useRef(0);
+  const ch4VideoRef  = useRef<HTMLVideoElement | null>(null);
+  const ch4LoadedRef = useRef(false);
+
+  // Recording
+  const mediaRecorderRef   = useRef<MediaRecorder | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+
   // Platformer state
   const keysRef       = useRef({ left: false, right: false, jump: false });
   const jumpConsumed  = useRef(false);
@@ -1071,13 +1100,64 @@ export function EyeTV() {
     jumpConsumed.current = false;
   }, []);
 
+  const ch4Navigate = useCallback((dir: number) => {
+    const recs = ch4RecRef.current;
+    if (!recs.length) return;
+    const next = Math.max(0, Math.min(recs.length - 1, ch4IdxRef.current + dir));
+    if (next === ch4IdxRef.current) return;
+    ch4IdxRef.current = next;
+    setCh4Idx(next);
+    const v = ch4VideoRef.current;
+    if (v) { v.src = recs[next].url; v.load(); v.play().catch(() => {}); }
+  }, []);
+
+  const startRecording = useCallback(() => {
+    if (!canvasRef.current || mediaRecorderRef.current?.state === "recording") return;
+    try {
+      type CaptureCanvas = HTMLCanvasElement & { captureStream(fps?: number): MediaStream };
+      const stream = (canvasRef.current as CaptureCanvas).captureStream(30);
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
+        ? "video/webm;codecs=vp9" : "video/webm";
+      const mr = new MediaRecorder(stream, { mimeType });
+      recordingChunksRef.current = [];
+      mr.ondataavailable = e => { if (e.data?.size > 0) recordingChunksRef.current.push(e.data); };
+      mr.start(1000);
+      mediaRecorderRef.current = mr;
+    } catch { /* unsupported browser */ }
+  }, []);
+
+  const stopAndUpload = useCallback((channel: string) => {
+    const mr = mediaRecorderRef.current;
+    if (!mr || mr.state === "inactive") return;
+    mediaRecorderRef.current = null;
+    mr.onstop = async () => {
+      const blob = new Blob(recordingChunksRef.current, { type: "video/webm" });
+      if (blob.size < 20_000) return;
+      const fd = new FormData();
+      fd.append("video", blob, "rec.webm");
+      fd.append("channel", channel);
+      fd.append("timestamp", Date.now().toString());
+      try {
+        await fetch("/api/upload-recording", { method: "POST", body: fd });
+        ch4LoadedRef.current = false;
+      } catch {}
+    };
+    mr.stop();
+  }, []);
+
   // Keyboard controls for platformer
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft"  || e.key === "a" || e.key === "A") keysRef.current.left  = true;
-      if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keysRef.current.right = true;
-      if (e.key === "ArrowUp" || e.key === "w" || e.key === "W" || e.key === " ") {
-        e.preventDefault(); keysRef.current.jump = true;
+      const ch = activeChRef.current;
+      if (ch === 2) {
+        if (e.key === "ArrowLeft"  || e.key === "a" || e.key === "A") keysRef.current.left  = true;
+        if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keysRef.current.right = true;
+        if (e.key === "ArrowUp" || e.key === "w" || e.key === "W" || e.key === " ") {
+          e.preventDefault(); keysRef.current.jump = true;
+        }
+      } else if (ch === 4) {
+        if (e.key === "ArrowLeft"  || e.key === "a" || e.key === "A") ch4Navigate(-1);
+        if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") ch4Navigate(+1);
       }
     };
     const up = (e: KeyboardEvent) => {
@@ -1094,6 +1174,38 @@ export function EyeTV() {
   useEffect(() => {
     if (activeCh === 2) initPlatLevel(platLevelRef.current);
   }, [activeCh, initPlatLevel]);
+
+  // Auto-record CH.2 and CH.3 sessions, upload on leave
+  useEffect(() => {
+    const ch = activeCh;
+    if (ch === 2 || ch === 3) {
+      startRecording();
+      return () => { stopAndUpload(ch === 2 ? "ch2" : "ch3"); };
+    }
+  }, [activeCh, startRecording, stopAndUpload]);
+
+  // Fetch recordings when entering CH.4
+  useEffect(() => {
+    if (activeCh !== 4 || ch4LoadedRef.current) return;
+    ch4LoadedRef.current = true;
+    fetch("https://api.github.com/repos/HermannPR/MildredPierce/releases/tags/recordings", {
+      headers: { Accept: "application/vnd.github.v3+json" },
+    })
+      .then(r => r.json())
+      .then(rel => {
+        if (!Array.isArray(rel.assets) || !rel.assets.length) return;
+        const recs = ([...rel.assets] as { id: number; browser_download_url: string; name: string }[])
+          .sort((a, b) => b.id - a.id)
+          .map(a => ({ url: a.browser_download_url, name: a.name }));
+        ch4RecRef.current = recs;
+        setCh4Recordings(recs);
+        ch4IdxRef.current = 0;
+        setCh4Idx(0);
+        const v = ch4VideoRef.current;
+        if (v) { v.src = recs[0].url; v.load(); v.play().catch(() => {}); }
+      })
+      .catch(() => {});
+  }, [activeCh]);
 
   // Restore saved nick from localStorage
   useEffect(() => {
@@ -1195,12 +1307,6 @@ export function EyeTV() {
 
       const ch = activeChRef.current;
 
-      // DEBUG — top-left dots: green=loop alive, yellow=ch2 active
-      ctx.fillStyle = "#00ff00"; ctx.fillRect(0, 0, 5, 5);
-      if (ch === 2) { ctx.fillStyle = "#ffff00"; ctx.fillRect(6, 0, 5, 5); }
-      // DEBUG — log to console every 120 frames
-      if (f % 120 === 0) console.log("[EyeTV debug]", { ch, frame: f, platPhase: platPhaseRef.current, playerY: Math.round(playerPlatRef.current.y) });
-
       if (ch === 2) {
         // ── Platformer Escape ─────────────────────────────
         const platPh = platPhaseRef.current;
@@ -1242,6 +1348,10 @@ export function EyeTV() {
           setMyScore(s => s + 1);
         });
         drawCatcher(ctx, catchDots.current, catchPaddleX.current, catchScoreRef.current, SAND_CW, SAND_CH, f);
+
+      } else if (ch === 4) {
+        // HTML video overlay handles playback; draw static noise only when no recordings
+        if (ch4RecRef.current.length === 0) drawNoSignal(ctx, f, "NO RECORDINGS");
 
       } else {
         // ── Channel 1 — Eye TV ───────────────────────────
@@ -1401,6 +1511,9 @@ export function EyeTV() {
     } else if (ch === 3) {
       const c = toCanvasCoords(e);
       if (c) catchTargetX.current = (c.cx - SAND_X0) / SAND_PX - 2;
+    } else if (ch === 4) {
+      const c = toCanvasCoords(e);
+      if (c && ch4RecRef.current.length > 1) ch4Navigate(c.cx < 96 ? -1 : 1);
     } else {
       handleClick();
     }
@@ -1453,6 +1566,54 @@ export function EyeTV() {
           width={192} height={192}
           style={{ imageRendering: "pixelated", display: "block", touchAction: "none", width: "100%", height: "100%" }}
         />
+        {/* CH.4 video overlay — covers only TV screen area, canvas bezel shows around it */}
+        <video
+          ref={ch4VideoRef}
+          autoPlay loop muted playsInline
+          style={{
+            position: "absolute",
+            left:   `${(24/192)*100}%`,
+            top:    `${(18/192)*100}%`,
+            width:  `${(144/192)*100}%`,
+            height: `${(120/192)*100}%`,
+            objectFit: "cover",
+            display: "block",
+            visibility: (activeCh === 4 && ch4Recordings.length > 0) ? "visible" : "hidden",
+            zIndex: 2,
+            pointerEvents: "none",
+          }}
+        />
+        {/* Scanline + title overlay for CH.4 */}
+        {activeCh === 4 && ch4Recordings.length > 0 && (
+          <div style={{
+            position: "absolute",
+            left:   `${(24/192)*100}%`,
+            top:    `${(18/192)*100}%`,
+            width:  `${(144/192)*100}%`,
+            height: `${(120/192)*100}%`,
+            zIndex: 3,
+            pointerEvents: "none",
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute", inset: 0,
+              background: "repeating-linear-gradient(0deg,transparent,transparent 1px,rgba(0,0,0,0.28) 1px,rgba(0,0,0,0.28) 2px)",
+            }} />
+            <div style={{
+              position: "absolute", bottom: 0, left: 0, right: 0,
+              background: "rgba(0,4,12,0.82)",
+              padding: "2px 4px",
+              fontFamily: "'Press Start 2P', monospace",
+              fontSize: "clamp(4px,1.6vw,7px)",
+              color: "#4a8ca8",
+              display: "flex",
+              justifyContent: "space-between",
+            }}>
+              <span>{ch4Recordings[ch4Idx]?.name?.replace(/_/g," ").replace(".webm","").slice(0,18) || ""}</span>
+              <span style={{ color: "#2a5a78" }}>{ch4Idx+1}/{ch4Recordings.length}</span>
+            </div>
+          </div>
+        )}
         {/* NamePicker overlay — sits on top of canvas, removed once name confirmed */}
         {phase === "pick" && (
           <div style={{
@@ -1468,7 +1629,7 @@ export function EyeTV() {
 
       {/* Channel selector — standalone row, reliable tap targets */}
       <div style={{ display:"flex", gap:8, width:W }}>
-        {([{ch:1,label:"CH.1 EYE"},{ch:2,label:"CH.2 RUN"},{ch:3,label:"CH.3 CATCH"}] as {ch:number,label:string}[]).map(({ch,label})=>(
+        {([{ch:1,label:"CH.1 EYE"},{ch:2,label:"CH.2 RUN"},{ch:3,label:"CH.3 CATCH"},{ch:4,label:"CH.4 REC"}] as {ch:number,label:string}[]).map(({ch,label})=>(
           <button key={ch}
             onPointerDown={()=>{ setActiveCh(ch); activeChRef.current=ch; }}
             style={{
@@ -1485,9 +1646,10 @@ export function EyeTV() {
       </div>
 
       {/* Fixed L / R side buttons — platformer only */}
-      {activeCh===2 && (<>
+      {(activeCh===2 || activeCh===4) && (<>
         <button
-          onPointerDown={()=>{keysRef.current.left=true;}} onPointerUp={()=>{keysRef.current.left=false;}}
+          onPointerDown={()=>{ if(activeCh===2){keysRef.current.left=true;}else{ch4Navigate(-1);} }}
+          onPointerUp={()=>{keysRef.current.left=false;}}
           onPointerLeave={()=>{keysRef.current.left=false;}} onPointerCancel={()=>{keysRef.current.left=false;}}
           style={{ position:"fixed", left:0, top:"50%", transform:"translateY(-50%)",
             width:52, height:130, zIndex:9000,
@@ -1498,7 +1660,8 @@ export function EyeTV() {
             display:"flex", alignItems:"center", justifyContent:"center",
           }}>◀</button>
         <button
-          onPointerDown={()=>{keysRef.current.right=true;}} onPointerUp={()=>{keysRef.current.right=false;}}
+          onPointerDown={()=>{ if(activeCh===2){keysRef.current.right=true;}else{ch4Navigate(+1);} }}
+          onPointerUp={()=>{keysRef.current.right=false;}}
           onPointerLeave={()=>{keysRef.current.right=false;}} onPointerCancel={()=>{keysRef.current.right=false;}}
           style={{ position:"fixed", right:0, top:"50%", transform:"translateY(-50%)",
             width:52, height:130, zIndex:9000,
