@@ -1,5 +1,7 @@
 # Mildred Pierce
 
+<p><img src="https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white" height="20" alt="Next.js"> <img src="https://img.shields.io/badge/Three.js-000000?style=flat-square&logo=threedotjs&logoColor=white" height="20" alt="Three.js"> <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" height="20" alt="TypeScript"> <img src="https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white" height="20" alt="Vercel"></p>
+
 An interactive web game experience: a channel-surfing platformer built with Next.js, Three.js and Spline, with chapters, a tamagotchi companion, leaderboards and recording uploads.
 
 ## Features
