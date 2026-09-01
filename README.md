@@ -4,6 +4,12 @@
 
 An interactive web game experience: a channel-surfing platformer built with Next.js, Three.js and Spline, with chapters, a tamagotchi companion, leaderboards and recording uploads.
 
+## The hard part
+
+Making a game that feels like a nostalgic TV but is actually a networked product. Behind the Three.js shaders (CRT scanlines, VHS noise, smoke, morphing text) are real API routes: score submission and leaderboards backed by `@vercel/postgres`, a `/api/register` flow, dynamic OG images, and a way for players to upload a recording of their run that lands in a GitHub release. The companion is fed by a separate Raspberry Pi/Flask backend, so the game has to stay fun while quietly talking to services.
+
+It's deployed and playable at [mildred-pierce.vercel.app](https://mildred-pierce.vercel.app) — that's the part I'm happiest about. It's not a demo, it's a shipped thing someone can actually play.
+
 ## Features
 
 - **Channel-surfing platformer** — the game (with EyeTV-style CRT presentation) is under `app/game`.
