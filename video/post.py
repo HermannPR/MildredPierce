@@ -7,10 +7,14 @@ import sys, os, glob, subprocess
 frames, audio, out = sys.argv[1], sys.argv[2], sys.argv[3]
 crf = sys.argv[4] if len(sys.argv) > 4 else "18"
 ext = "png" if glob.glob(os.path.join(frames, "f_*.png")) else "jpg"
-n = len(glob.glob(os.path.join(frames, f"f_*.{ext}")))
+# cuadros contiguos y completos desde el 1 (ignora placeholders vacios de un render en curso)
+n = 0
+while os.path.exists(p := os.path.join(frames, f"f_{n + 1:04d}.{ext}")) and os.path.getsize(p) > 0:
+    n += 1
 fps = 24
 dur = n / fps
 vf = ",".join([
+    "scale=trunc(iw/2)*2:trunc(ih/2)*2",
     "eq=contrast=1.04:saturation=1.06",
     "noise=alls=9:allf=t+u",
     "vignette=angle=PI/5",
