@@ -42,3 +42,7 @@ __pycache__/
 ChatGPT Image May 7, 2026, 11_13_17 PM.png
 Fractal Agreement (1).wav
 BandImage.jpeg
+
+# video 3D (Blender): binarios y renders fuera del repo
+video/*.blend
+video/*.blend1

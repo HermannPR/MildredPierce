@@ -84,3 +84,13 @@ body::after {
   background-size: 256px 256px;
   mix-blend-mode: overlay;
 }
+
+/* Respeta 'reducir movimiento' del sistema */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+

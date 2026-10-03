@@ -7,6 +7,7 @@ import { Instagram, Youtube } from "lucide-react";
 import { HoverMorphText } from "@/components/ui/hover-morph-text";
 import { CRTIntro } from "@/components/ui/crt-intro";
 import { GlassButton } from "@/components/ui/apple-tahoe-liquid-glass-button";
+import { VideoTeaser } from "@/components/ui/video-teaser";
 
 const ShaderAnimation = dynamic(
   () => import("@/components/ui/shader-animation").then((m) => m.ShaderAnimation),
@@ -49,7 +50,7 @@ const PARCHMENT = "#C8B090";
 const STEEL     = "rgba(180,196,208,0.80)";
 const RULE      = "rgba(160,185,200,0.18)";
 
-const TITLE_SIZE   = "clamp(2.1rem, 6.8vw, 6.2rem)";
+const TITLE_SIZE   = "clamp(2.1rem, 4.8vw, 5.6rem)";
 const HOLD_MILDRED = 3000;
 const HOLD_FRACTAL = 5000;
 const MORPH_MS     = 1300;
@@ -395,20 +396,13 @@ export default function Home() {
             >
               Fractal Agreement — Official Video
             </div>
-            <div style={{
-              width: "100%", aspectRatio: "16/9",
-              borderRadius: "3px",
-              overflow: "hidden",
-              boxShadow: "0 0 0 1px rgba(100,180,255,0.12), 0 0 40px rgba(0,100,200,0.22), 0 0 80px rgba(0,50,120,0.12)",
-            }}>
-              <iframe
-                src={`https://www.youtube.com/embed/${YOUTUBE_ID}?rel=0&modestbranding=1&color=white`}
-                style={{ width: "100%", height: "100%", border: "none", display: "block" }}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                title="Fractal Agreement — Mildred Pierce"
-              />
-            </div>
+            <VideoTeaser
+              youtubeId={YOUTUBE_ID}
+              title="Fractal Agreement · Mildred Pierce"
+              poster="/video/fractal-teaser-poster.jpg"
+              webm="/video/fractal-teaser.webm"
+              mp4="/video/fractal-teaser.mp4"
+            />
           </div>
         </section>
 
@@ -443,6 +437,7 @@ export default function Home() {
 
           {/* Content — anchored to bottom */}
           <div className="relative z-10 px-7 md:px-10 lg:px-14 pb-10 md:pb-14 pt-6">
+            <h1 className="sr-only">Mildred Pierce: Fractal Agreement</h1>
 
             {/* Rule */}
             <div className="mb-5" style={{ height: 1, background: RULE }} />
@@ -463,7 +458,7 @@ export default function Home() {
             {/* Release line */}
             <p
               className="font-display uppercase select-none"
-              style={{ color: PARCHMENT, letterSpacing: "0.45em", fontSize: "clamp(0.44rem, 0.9vw, 0.56rem)", marginTop: "0.3rem", opacity: 0.6 }}
+              style={{ color: PARCHMENT, letterSpacing: "0.38em", fontSize: "clamp(0.66rem, 0.9vw, 0.72rem)", marginTop: "0.3rem", opacity: 0.8 }}
             >
               2026 — Debut Single
             </p>
@@ -474,7 +469,7 @@ export default function Home() {
             {/* Listen label */}
             <p
               className="font-display uppercase select-none"
-              style={{ color: STEEL, letterSpacing: "0.4em", fontSize: "0.5rem", marginBottom: "0.9rem", opacity: 0.65 }}
+              style={{ color: STEEL, letterSpacing: "0.34em", fontSize: "0.66rem", marginBottom: "0.9rem", opacity: 0.85 }}
             >
               — Listen Now —
             </p>
