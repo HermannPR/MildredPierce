@@ -1,107 +1,61 @@
 # Mildred Pierce: EYETV
 
-> **EN:** Transmedia website for the band Mildred Pierce: a landing page for the debut single plus EYETV, a CRT-styled browser game with chapters, call signs, a shared global score and leaderboards, built with Next.js, Three.js and Vercel Postgres.
-> **ES:** Sitio transmedia para la banda Mildred Pierce: landing del sencillo debut y EYETV, un juego web estilo televisión CRT con capítulos, marcador global compartido y leaderboards.
+Sitio web de la banda Mildred Pierce. Tiene la página de su sencillo debut y EYETV, un juego en el navegador con estilo de televisión CRT, pensado para los fans de la banda.
 
-<p><img src="https://img.shields.io/badge/Next.js_16-000000?style=flat-square&logo=nextdotjs&logoColor=white" height="20" alt="Next.js"> <img src="https://img.shields.io/badge/Three.js-000000?style=flat-square&logo=threedotjs&logoColor=white" height="20" alt="Three.js"> <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" height="20" alt="TypeScript"> <img src="https://img.shields.io/badge/Vercel_Postgres-000000?style=flat-square&logo=vercel&logoColor=white" height="20" alt="Vercel Postgres"></p>
+**Sitio en vivo:** https://mildred-pierce.vercel.app (el juego está en https://mildred-pierce.vercel.app/game)
 
-**Live:** [mildred-pierce.vercel.app](https://mildred-pierce.vercel.app) · game at [/game](https://mildred-pierce.vercel.app/game)
-**Design and development:** [Hermann Pauwells Rivera](https://hermannpr.github.io/)
+![Página principal del sencillo debut](docs/capturas/inicio-escritorio.jpg)
 
-| Landing (debut single) | EYETV game |
-|---|---|
-| ![Landing page](docs/screenshots/home.png) | ![EYETV game with call sign, chapters and leaderboard](docs/screenshots/game.png) |
+![Juego EYETV con indicativo, canales y tabla de posiciones](docs/capturas/juego-escritorio.jpg)
 
-## How it fits together
+<img src="docs/capturas/inicio-movil.jpg" width="260" alt="Página principal en celular">
 
-```mermaid
-flowchart LR
-  P[Player browser] --> L[Landing<br/>CRT intro, shaders, streaming links]
-  P --> G[EYETV game<br/>chapters, call sign, score]
-  G -->|/api/submit, /api/click, /api/hype| API[Next.js API routes]
-  G -->|/api/leaderboard, /api/myscore, /api/signalmap| API
-  API --> PG[(Vercel Postgres)]
-  G -->|/api/upload-recording| GH[GitHub Releases<br/>tag: recordings]
-  T[Tamagotchi page] -->|NEXT_PUBLIC_TAMAGOTCHI_API| PI[Raspberry Pi<br/>Flask backend]
-  API --> OG["/api/og<br/>dynamic share images"]
-```
+## Qué incluye
 
-## The hard part
+- Página principal con video del sencillo, enlaces a Spotify, YouTube, Apple Music e Instagram y efectos visuales con shaders.
+- Juego EYETV con cuatro canales, indicativo de cuatro letras y marcador global compartido entre todos los jugadores.
+- Tabla de posiciones y puntaje personal, guardados en Postgres.
+- Los jugadores pueden subir la grabación de su partida, que se guarda en un release de GitHub.
+- Imágenes para compartir generadas al momento (`/api/og`).
+- Página de mascota virtual que se conecta a un servidor Flask en una Raspberry Pi.
 
-Making a game that feels like a nostalgic TV but is actually a networked product. Behind the Three.js shaders (CRT scanlines, VHS noise, smoke, morphing text) are real API routes: score submission and leaderboards backed by `@vercel/postgres`, a `/api/register` flow, dynamic OG images, and a way for players to upload a recording of their run that lands in a GitHub release. The companion is fed by a separate Raspberry Pi/Flask backend, so the game has to stay fun while quietly talking to services.
+## Tecnologías
 
-It's deployed and playable at [mildred-pierce.vercel.app](https://mildred-pierce.vercel.app), and that is the part I'm happiest about. It's not a demo, it's a shipped thing someone can actually play.
+- Next.js 16 (App Router), React 19 y TypeScript
+- Three.js, Spline y Framer Motion
+- Tailwind CSS
+- Vercel Postgres
+- Vercel para el despliegue
 
-## Features
-
-- **Channel-surfing platformer**: the game (with EyeTV-style CRT presentation) is under `app/game`.
-- **Tamagotchi companion**: a virtual pet page (`app/tamagotchi`) fed by an external Pi/Flask backend.
-- **Chapters and meta-game**: signal map, hype, click events and score submission (`/api/signalmap`, `/api/hype`, `/api/click`, `/api/submit`, `/api/myscore`).
-- **Leaderboards**: global scores via `@vercel/postgres`.
-- **Recording upload**: players upload recordings (`/api/upload-recording`), posted to GitHub releases.
-- **OG image generation**: dynamic share images (`/api/og`).
-- **Heavy visual FX**: Three.js shaders, VHS/CRT/smoke backgrounds, custom cursor, liquid-glass buttons, morphing text, all with Framer Motion.
-- **Registration**: player registration via `/api/register`.
-
-## Tech stack
-
-- Next.js 16 (App Router), React 19, TypeScript
-- Three.js + @splinetool/runtime, Framer Motion
-- Tailwind CSS, lucide-react, class-variance-authority
-- @vercel/postgres, deployed on Vercel
-
-## Getting started
+## Cómo correrlo en local
 
 ```bash
 npm install
-npm run dev      # next dev
+cp .env.local.example .env.local
+npm run dev
 ```
 
-Production:
+Se abre en http://localhost:3000. Las variables de `.env.local.example` son:
 
-```bash
-npm run build    # next build
-npm start        # next start
-```
+- `POSTGRES_URL`: conexión a Vercel Postgres
+- `NEXT_PUBLIC_TAMAGOTCHI_API`: URL pública del servidor de la mascota virtual
+- `GITHUB_TOKEN`: token del servidor para guardar grabaciones
+- `GITHUB_REPO`: repositorio donde se guardan las grabaciones
 
-## Environment variables
+Para producción: `npm run build` y luego `npm start`.
 
-Copy `.env.local.example` to `.env.local`:
-
-| Variable | Description |
-|---|---|
-| `NEXT_PUBLIC_TAMAGOTCHI_API` | Public URL of the tamagotchi backend (Flask server), e.g. `https://pi.yourdomain.ts.net` |
-| `POSTGRES_URL` | Vercel Postgres connection string (set automatically when the store is linked in Vercel) |
-| `GITHUB_TOKEN` | Server-only token with `contents:write` on the repo that stores recordings |
-| `GITHUB_REPO` | Repo for recordings, defaults to `HermannPR/MildredPierce` |
-
-## Project structure
+## Estructura
 
 ```
-app/
-├── page.tsx, layout.tsx          # landing page
-├── game/                         # game: EyeTVPage.tsx, page.tsx
-├── tamagotchi/page.tsx           # virtual pet page
-└── api/                          # 9 routes
-    ├── click, hype, leaderboard, myscore
-    ├── register, signalmap, submit, upload-recording, og
-components/ui/                    # FX components (shaders, VHS, CRT, tamagotchi EyeTV, ...)
-lib/                              # colors.ts, utils.ts
-public/                           # fonts, images, og-image.jpg
+app/page.tsx       página principal
+app/game/          juego EYETV
+app/tamagotchi/    mascota virtual
+app/api/           rutas: click, hype, leaderboard, myscore, register, signalmap, submit, upload-recording, og
+components/ui/     efectos visuales (shaders, VHS, CRT)
 ```
 
-## Tests
+Autor del diseño y el desarrollo: [Hermann Pauwells Rivera](https://hermannpr.github.io/)
 
-No automated tests configured. Lint:
+## Licencia
 
-```bash
-npm run lint      # next lint
-```
-
-## Status
-
-Live and maintained; 135 commits.
-
-## License
-
-[MIT](LICENSE). Band name, music and artwork belong to Mildred Pierce.
+[MIT](LICENSE). El nombre de la banda, la música y el arte pertenecen a Mildred Pierce.
